@@ -1,0 +1,829 @@
+<title>Vitals Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a phone-first instrument panel. Sticky filter bar on top, one column of
+   panels, tab bar at the bottom; widens to a two-column grid on desktop. */
+:root {
+  --bg: #EEF1F5;
+  --panel: #FFFFFF;
+  --panel-2: #F5F7FA;
+  --ink: #141A24;
+  --ink-2: #4A5566;
+  --ink-3: #7B8697;
+  --line: #DCE2EA;
+  --accent: #2F6FDB;
+  --whoop: #B8740F;
+  --oura: #6A55D8;
+  --good: #1F8F66;
+  --warn: #A9781A;
+  --bad: #C8463A;
+  --track: #E3E8EF;
+  --shadow: 0 1px 2px rgba(20, 26, 36, .06), 0 4px 16px rgba(20, 26, 36, .04);
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C111A; --panel: #141B27; --panel-2: #1A2331; --ink: #E8EDF4; --ink-2: #A9B4C4;
+    --ink-3: #758197; --line: #253042; --accent: #6C9BF0; --whoop: #C4851F; --oura: #8270E6;
+    --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B;
+    --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C111A; --panel: #141B27; --panel-2: #1A2331; --ink: #E8EDF4; --ink-2: #A9B4C4;
+  --ink-3: #758197; --line: #253042; --accent: #6C9BF0; --whoop: #C4851F; --oura: #8270E6;
+  --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B;
+  --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.45 var(--f-body); -webkit-font-smoothing: antialiased; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--bg); }
+button { font: inherit; color: inherit; }
+.num, .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+h1, h2, h3 { font-family: var(--f-display); margin: 0; text-wrap: balance; letter-spacing: -.01em; }
+.eyebrow { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+.muted { color: var(--ink-3); }
+
+/* Top bar */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.top-in { max-width: 1120px; margin: 0 auto; padding-block: 10px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.brand { display: flex; align-items: baseline; gap: 8px; margin-right: auto; }
+.brand h1 { font-size: 20px; }
+.brand .demo { font-size: 11px; padding: 2px 7px; border-radius: 99px; background: var(--panel-2); color: var(--ink-2); border: 1px solid var(--line); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.filters .sep { width: 1px; height: 20px; background: var(--line); margin: 0 4px; }
+.chip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px; border-radius: 99px; border: 1px solid var(--line);
+  background: var(--panel); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--ink-2); }
+.chip[aria-pressed="true"] { color: var(--ink); border-color: color-mix(in srgb, var(--ink) 30%, var(--line)); }
+.chip[aria-pressed="false"] { opacity: .55; }
+.chip:focus-visible, .tab:focus-visible, .btn:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatch { width: 14px; height: 4px; border-radius: 2px; flex: none; }
+.swatch.dash { background: none !important; border-top: 2px dashed; height: 0; }
+
+/* Main */
+main { max-width: 1120px; margin: 0 auto; padding-block: 16px 110px; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.view { display: grid; gap: 14px; }
+.grid2 { display: grid; gap: 14px; grid-template-columns: 1fr; }
+@media (min-width: 860px) { .grid2 { grid-template-columns: 1fr 1fr; } .span2 { grid-column: 1 / -1; } }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; box-shadow: var(--shadow); min-width: 0; }
+.panel-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.panel-h h2 { font-size: 17px; }
+.daybar { display: flex; align-items: center; gap: 8px; }
+.daybar h2 { font-size: 24px; }
+.iconbtn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; display: grid; place-items: center; }
+.iconbtn:disabled { opacity: .35; cursor: default; }
+.btn { height: 36px; padding: 0 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-weight: 600; font-size: 13px; }
+.btn.primary { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.seg button { border: 0; background: var(--panel); padding: 6px 12px; cursor: pointer; font-size: 13px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--panel-2); color: var(--ink); font-weight: 600; }
+select { height: 34px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 0 10px; font: inherit; font-size: 13px; }
+
+/* Rings */
+.rings { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ring { display: grid; justify-items: center; gap: 6px; text-align: center; min-width: 0; }
+.ring svg { width: 100%; max-width: 168px; height: auto; }
+.ring .label { font-size: 12px; font-weight: 600; color: var(--ink-2); letter-spacing: .04em; text-transform: uppercase; }
+.ring-legend { display: grid; gap: 3px; width: 100%; max-width: 170px; }
+.ring-legend div { display: flex; justify-content: space-between; gap: 6px; font-size: 12px; color: var(--ink-2); }
+.ring-legend .num { color: var(--ink); }
+.tier { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 99px; background: var(--panel-2); border: 1px solid var(--line); }
+.tier i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+/* Vitals table */
+.vitals { width: 100%; border-collapse: collapse; font-size: 14px; }
+.vitals th, .vitals td { padding: 10px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+.vitals th:first-child, .vitals td:first-child { text-align: left; }
+.vitals thead th { font-size: 11px; color: var(--ink-3); font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.vitals tbody tr:last-child td { border-bottom: 0; }
+.delta { font-size: 11px; display: block; color: var(--ink-3); }
+.delta.up { color: var(--good); } .delta.down { color: var(--bad); }
+.na { color: var(--ink-3); font-size: 12px; }
+.scroll-x { overflow-x: auto; }
+
+/* Live */
+.live { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.live .bpm { font-family: var(--f-display); font-size: 44px; font-weight: 700; line-height: 1; }
+.pulse { width: 10px; height: 10px; border-radius: 50%; background: var(--bad); box-shadow: 0 0 0 0 color-mix(in srgb, var(--bad) 50%, transparent); animation: pulse 1.2s infinite; }
+.pulse.off { background: var(--ink-3); animation: none; }
+@keyframes pulse { 70% { box-shadow: 0 0 0 10px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (prefers-reduced-motion: reduce) { .pulse { animation: none; } }
+
+/* Charts */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { fill: var(--ink-3); font: 11px var(--f-mono); }
+.tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; box-shadow: var(--shadow);
+  padding: 8px 10px; font-size: 12px; min-width: 150px; z-index: 5; display: none; }
+.tip .row { display: flex; align-items: center; gap: 8px; justify-content: space-between; }
+.tip .row span:first-child { display: flex; align-items: center; gap: 6px; color: var(--ink-2); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); margin-top: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+/* Stage bars */
+.stages { display: grid; gap: 10px; }
+.stage-row { display: grid; grid-template-columns: 120px 1fr; gap: 10px; align-items: center; font-size: 12px; }
+.stage-row .who { color: var(--ink-2); display: flex; align-items: center; gap: 6px; min-width: 0; }
+.stackbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; gap: 2px; background: var(--panel); }
+.stackbar div { height: 100%; }
+.st-awake { background: color-mix(in srgb, var(--ink-3) 45%, transparent); }
+.st-light { background: color-mix(in srgb, var(--accent) 40%, var(--panel)); }
+.st-rem { background: color-mix(in srgb, var(--accent) 70%, var(--panel)); }
+.st-deep { background: var(--accent); }
+
+/* Stat cards */
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.stat { background: var(--panel-2); border-radius: 12px; padding: 12px; min-width: 0; }
+.stat .v { font-family: var(--f-display); font-size: 26px; font-weight: 700; }
+.stat .k { font-size: 12px; color: var(--ink-2); }
+.stat .s { font-size: 11px; color: var(--ink-3); margin-top: 2px; }
+
+/* Readiness */
+.progress { height: 8px; background: var(--track); border-radius: 99px; overflow: hidden; }
+.progress div { height: 100%; background: var(--accent); border-radius: 99px; }
+.checklist { display: grid; gap: 8px; margin-top: 12px; }
+.check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.check b { font-weight: 600; }
+.mark { width: 18px; height: 18px; border-radius: 50%; flex: none; display: grid; place-items: center; font-size: 11px; color: var(--panel); margin-top: 1px; }
+
+/* Devices */
+.dev { display: grid; gap: 12px; }
+.kv { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 13px; }
+.kv dt { color: var(--ink-3); } .kv dd { margin: 0; text-align: right; }
+.note { font-size: 13px; color: var(--ink-2); background: var(--panel-2); border-radius: 10px; padding: 10px 12px; }
+
+/* Tab bar */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
+.tabs-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tab { display: grid; justify-items: center; gap: 2px; padding: 8px 0 9px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 11px; font-weight: 600; }
+.tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tab[aria-current="page"] { color: var(--ink); }
+.alerts { display: grid; gap: 8px; }
+.alert { display: flex; gap: 12px; align-items: flex-start; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line);
+  background: var(--panel); font-size: 13px; color: var(--ink-2); box-shadow: var(--shadow); }
+.alert b { color: var(--ink); display: block; margin-bottom: 2px; }
+.alert-mark { width: 22px; height: 22px; border-radius: 50%; flex: none; display: grid; place-items: center; font-weight: 700; font-size: 12px; color: var(--panel); background: var(--ink-3); }
+.alert.warn .alert-mark { background: var(--warn); } .alert.critical .alert-mark { background: var(--bad); }
+.alert.critical { border-color: color-mix(in srgb, var(--bad) 45%, var(--line)); }
+.brief:empty { display: none; }
+.brief { background: var(--panel-2); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+.brief-head { font-family: var(--f-display); font-size: 17px; font-weight: 700; margin: 4px 0 6px; text-wrap: balance; }
+.brief ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 13px; display: grid; gap: 2px; }
+.eff { display: block; font-size: 11px; }
+.eff.clear { font-weight: 700; color: var(--ink); } .eff.possible { color: var(--ink-2); } .eff.none { color: var(--ink-3); }
+.empty { padding: 28px 12px; text-align: center; color: var(--ink-3); font-size: 13px; }
+</style>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><h1>Vitals Lab</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
+    <div class="filters" role="group" aria-label="Show data from">
+      <button class="chip" data-filter="device:whoop" aria-pressed="true"><span class="swatch" style="background:var(--whoop)"></span>WHOOP</button>
+      <button class="chip" data-filter="device:oura" aria-pressed="true"><span class="swatch" style="background:var(--oura)"></span>Oura</button>
+      <span class="sep" aria-hidden="true"></span>
+      <button class="chip" data-filter="source:ours" aria-pressed="true"><span class="swatch" style="background:var(--ink-2)"></span>Ours</button>
+      <button class="chip" data-filter="source:official" aria-pressed="true"><span class="swatch dash" style="border-color:var(--ink-2)"></span>Official</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="view" id="view-today" data-view="today"></section>
+  <section class="view" id="view-sleep" data-view="sleep" hidden></section>
+  <section class="view" id="view-trends" data-view="trends" hidden></section>
+  <section class="view" id="view-compare" data-view="compare" hidden></section>
+  <section class="view" id="view-devices" data-view="devices" hidden></section>
+</main>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="tabs-in">
+    <button class="tab" data-tab="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
+    <button class="tab" data-tab="sleep"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Sleep</button>
+    <button class="tab" data-tab="trends"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>Trends</button>
+    <button class="tab" data-tab="compare"><svg viewBox="0 0 24 24"><path d="M7 4v16M17 4v16"/><path d="M3 9h8M13 15h8"/></svg>Compare</button>
+    <button class="tab" data-tab="devices"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="3"/><path d="M10 8h4"/></svg>Devices</button>
+  </div>
+</nav>
+
+<script>
+(() => {
+"use strict";
+// ------------------------------------------------------------------ state
+const SERIES = [
+  { key: "whoop:ours", device: "whoop", source: "ours", name: "WHOOP · Ours", color: "var(--whoop)", dash: false },
+  { key: "whoop:official", device: "whoop", source: "official", name: "WHOOP · Official", color: "var(--whoop)", dash: true },
+  { key: "oura:ours", device: "oura", source: "ours", name: "Oura · Ours", color: "var(--oura)", dash: false },
+  { key: "oura:official", device: "oura", source: "official", name: "Oura · Official", color: "var(--oura)", dash: true },
+];
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("vitals:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("vitals:" + k, JSON.stringify(v)); } catch {} },
+};
+const S = {
+  filters: store.get("filters", { whoop: true, oura: true, ours: true, official: true }),
+  view: "today", day: null, range: store.get("range", 30), metric: store.get("metric", "recovery"),
+  pair: store.get("pair", "whoop_ours_vs_official"), cmpMetric: "hrv",
+  data: null, compare: null, readiness: null, nights: {}, demo: null,
+  journal: { entries: [], presets: [] }, patterns: null, alerts: [], summaries: {},
+};
+const DEMO_EL = document.getElementById("demo-data");
+if (DEMO_EL) S.demo = JSON.parse(DEMO_EL.textContent);
+
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const visible = () => SERIES.filter(s => S.filters[s.device] && S.filters[s.source] && hasSeries(s.key));
+const hasSeries = key => !!(S.idx && S.idx[key] && Object.keys(S.idx[key]).length);
+const row = (key, day) => (S.idx[key] || {})[day];
+const fmt = (v, d = 0) => v == null || Number.isNaN(v) ? "—" : Number(v).toFixed(d);
+const hm = min => min == null ? "—" : `${Math.floor(min / 60)}h ${String(Math.round(min % 60)).padStart(2, "0")}m`;
+const clock = ts => ts ? new Date(ts * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "—";
+const dayLabel = d => new Date(d + "T12:00:00").toLocaleDateString([], { weekday: "long", month: "short", day: "numeric" });
+const shortDay = d => new Date(d + "T12:00:00").toLocaleDateString([], { month: "short", day: "numeric" });
+const addDays = (d, n) => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+const ago = ts => { if (!ts) return "never"; const s = Date.now() / 1000 - ts; if (s < 90) return "just now";
+  if (s < 3600) return Math.round(s / 60) + " min ago"; if (s < 86400) return Math.round(s / 3600) + " h ago"; return Math.round(s / 86400) + " days ago"; };
+const swatch = s => `<span class="swatch${s.dash ? " dash" : ""}" style="${s.dash ? "border-color" : "background"}:${s.color}"></span>`;
+function tier(rec) {
+  if (rec == null) return "";
+  const [c, l] = rec >= 67 ? ["var(--good)", "High"] : rec >= 34 ? ["var(--warn)", "Moderate"] : ["var(--bad)", "Low"];
+  return `<span class="tier"><i style="background:${c}"></i>${l} recovery</span>`;
+}
+
+// ------------------------------------------------------------------ data
+async function api(path) {
+  if (S.demo) {
+    if (path.startsWith("/api/overview")) return S.demo.overview;
+    if (path.startsWith("/api/compare")) return S.demo.compare;
+    if (path.startsWith("/api/readiness")) return S.demo.readiness;
+    if (path.startsWith("/api/night")) { const q = new URLSearchParams(path.split("?")[1]); return S.demo.nights[q.get("device") + ":" + q.get("day")] || { hypnogram: [], hr: [] }; }
+    if (path.startsWith("/api/live")) return demoLive();
+    if (path.startsWith("/api/summary")) { const q = new URLSearchParams(path.split("?")[1]); return S.demo.summaries[q.get("day")] || { headline: "Last night isn't scored yet", items: [] }; }
+    if (path.startsWith("/api/alerts")) return S.demo.alerts;
+    if (path.startsWith("/api/journal")) return S.demo.journal;
+    if (path.startsWith("/api/patterns")) return S.demo.patterns;
+    return {};
+  }
+  const r = await fetch(path, { headers: { Accept: "application/json" } });
+  if (!r.ok) throw new Error(path + " → " + r.status);
+  return r.json();
+}
+function demoLive() {
+  const now = Math.floor(Date.now() / 1000), out = [];
+  for (let t = now - 88; t <= now; t += 2) out.push({ ts: t, bpm: Math.round(61 + 3 * Math.sin(t / 9) + Math.sin(t / 3)) });
+  return { whoop: out, oura: [] };
+}
+function index(daily) {
+  const idx = {};
+  for (const r of daily) (idx[r.device + ":" + r.source] ||= {})[r.day] = r;
+  S.idx = idx;
+  const days = [...new Set(daily.map(r => r.day))].sort();
+  S.days = days;
+  if (!S.day || !days.includes(S.day)) S.day = days[days.length - 1] || new Date().toISOString().slice(0, 10);
+}
+async function load() {
+  S.data = await api("/api/overview?days=120");
+  index(S.data.daily);
+  render();
+  Promise.all([api("/api/compare?days=60"), api("/api/readiness")]).then(([c, r]) => { S.compare = c; S.readiness = r; if (S.view === "compare") render(); }).catch(() => {});
+  Promise.all([api("/api/journal?days=120"), api("/api/patterns"), api("/api/alerts")]).then(([j, p, a]) => {
+    S.journal = j; S.patterns = p; S.alerts = a.alerts || []; if (S.view === "today" || S.view === "trends") render();
+  }).catch(() => {});
+}
+async function setTag(day, tag, on) {
+  const list = S.journal.entries;
+  if (on) list.push({ day, tag }); else S.journal.entries = list.filter(e => !(e.day === day && e.tag === tag));
+  if (S.demo) return;
+  try {
+    await fetch("/api/journal", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ day, tag, on }) });
+    S.patterns = await api("/api/patterns");
+  } catch {}
+}
+
+// ------------------------------------------------------------------ charts
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs = {}, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; }
+function niceTicks(lo, hi, n = 4) {
+  if (lo === hi) { lo -= 1; hi += 1; }
+  const step0 = (hi - lo) / n, mag = 10 ** Math.floor(Math.log10(step0)), norm = step0 / mag;
+  const step = (norm < 1.5 ? 1 : norm < 3 ? 2 : norm < 7 ? 5 : 10) * mag;
+  const t = []; for (let v = Math.ceil(lo / step) * step; v <= hi + 1e-9; v += step) t.push(+v.toFixed(6));
+  return { ticks: t, lo: Math.min(lo, t[0]), hi: Math.max(hi, t[t.length - 1]) };
+}
+
+function ringSVG(arcs, max, center, sub) {
+  const size = 160, c = size / 2, svg = el("svg", { viewBox: `0 0 ${size} ${size}`, role: "img" });
+  const n = Math.max(arcs.length, 1), w = n > 2 ? 7 : 10, gap = 3;
+  el("title", {}, svg).textContent = `${center} ${sub || ""}`;
+  arcs.forEach((a, i) => {
+    const r = c - 8 - i * (w + gap), circ = 2 * Math.PI * r;
+    el("circle", { cx: c, cy: c, r, fill: "none", stroke: "var(--track)", "stroke-width": w }, svg);
+    if (a.value != null) {
+      const frac = Math.max(0.01, Math.min(1, a.value / max));
+      el("circle", { cx: c, cy: c, r, fill: "none", stroke: a.color, "stroke-width": w, "stroke-linecap": "round",
+        "stroke-dasharray": `${frac * circ} ${circ}`, transform: `rotate(-90 ${c} ${c})`, opacity: a.dash ? .55 : 1 }, svg);
+    }
+  });
+  const t = el("text", { x: c, y: c + 4, "text-anchor": "middle", fill: "var(--ink)", style: "font: 700 30px var(--f-display); fill: var(--ink)" }, svg);
+  t.textContent = center;
+  if (sub) { const s = el("text", { x: c, y: c + 24, "text-anchor": "middle", style: "font: 11px var(--f-mono); fill: var(--ink-3)" }, svg); s.textContent = sub; }
+  return svg;
+}
+
+function lineChart(host, series, { yFmt = v => v, height = 230, xIsTime = false, yMin = null, yMax = null } = {}) {
+  host.innerHTML = "";
+  host.classList.add("chart");
+  const pts = series.flatMap(s => s.points);
+  if (!pts.length) { host.innerHTML = `<div class="empty">No data for this range yet.</div>`; return; }
+  const W = Math.max(320, host.clientWidth || 640), H = height, m = { l: 44, r: 14, t: 10, b: 26 };
+  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs);
+  const yt = niceTicks(yMin ?? Math.min(...ys), yMax ?? Math.max(...ys));
+  const X = v => m.l + (x1 === x0 ? 0.5 : (v - x0) / (x1 - x0)) * (W - m.l - m.r);
+  const Y = v => m.t + (1 - (v - yt.lo) / (yt.hi - yt.lo)) * (H - m.t - m.b);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, host);
+  for (const t of yt.ticks) {
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: "var(--line)", "stroke-width": 1 }, svg);
+    el("text", { x: m.l - 8, y: Y(t) + 4, "text-anchor": "end" }, svg).textContent = yFmt(t);
+  }
+  const nx = Math.min(6, Math.max(2, Math.floor((W - m.l - m.r) / 90)));
+  for (let i = 0; i <= nx; i++) {
+    const v = x0 + (x1 - x0) * i / nx;
+    const lbl = xIsTime ? new Date(v * 1000).toLocaleTimeString([], x1 - x0 < 7200 ? { hour: "numeric", minute: "2-digit", second: x1 - x0 < 600 ? "2-digit" : undefined } : { hour: "numeric" })
+      : shortDay(new Date(v).toISOString().slice(0, 10));
+    el("text", { x: X(v), y: H - 6, "text-anchor": i === 0 ? "start" : i === nx ? "end" : "middle" }, svg).textContent = lbl;
+  }
+  for (const s of series) {
+    if (!s.points.length) continue;
+    let d = "", prev = null;
+    for (const p of s.points) { const gapBreak = prev && (p[0] - prev[0]) > s.gap; d += (d && !gapBreak ? "L" : "M") + X(p[0]).toFixed(1) + " " + Y(p[1]).toFixed(1); prev = p; }
+    el("path", { d, fill: "none", stroke: s.color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round", "stroke-dasharray": s.dash ? "5 4" : "none" }, svg);
+    const last = s.points[s.points.length - 1];
+    el("circle", { cx: X(last[0]), cy: Y(last[1]), r: 4, fill: s.color, stroke: "var(--panel)", "stroke-width": 2 }, svg);
+  }
+  // hover crosshair + tooltip
+  const cross = el("line", { y1: m.t, y2: H - m.b, stroke: "var(--ink-3)", "stroke-width": 1, "stroke-dasharray": "2 3", opacity: 0 }, svg);
+  const dots = series.map(s => el("circle", { r: 4.5, fill: s.color, stroke: "var(--panel)", "stroke-width": 2, opacity: 0 }, svg));
+  const tip = document.createElement("div"); tip.className = "tip"; host.appendChild(tip);
+  const hit = el("rect", { x: m.l, y: 0, width: W - m.l - m.r, height: H, fill: "transparent" }, svg);
+  const allX = [...new Set(xs)].sort((a, b) => a - b);
+  function move(ev) {
+    const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+    const xv = x0 + (px - m.l) / (W - m.l - m.r) * (x1 - x0);
+    let best = allX[0]; for (const v of allX) if (Math.abs(v - xv) < Math.abs(best - xv)) best = v;
+    cross.setAttribute("x1", X(best)); cross.setAttribute("x2", X(best)); cross.setAttribute("opacity", 1);
+    let rows = "";
+    series.forEach((s, i) => {
+      const p = s.points.find(q => q[0] === best);
+      if (p) { dots[i].setAttribute("cx", X(p[0])); dots[i].setAttribute("cy", Y(p[1])); dots[i].setAttribute("opacity", 1);
+        rows += `<div class="row"><span>${swatch(s)}${esc(s.name)}</span><b class="num">${esc(yFmt(p[1], true))}</b></div>`; }
+      else dots[i].setAttribute("opacity", 0);
+    });
+    const head = xIsTime ? new Date(best * 1000).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : dayLabel(new Date(best).toISOString().slice(0, 10));
+    tip.innerHTML = `<div class="eyebrow" style="margin-bottom:4px">${esc(head)}</div>${rows}`;
+    tip.style.display = "block";
+    const left = (X(best) / W) * r.width;
+    tip.style.left = Math.min(Math.max(0, left - tip.offsetWidth / 2), r.width - tip.offsetWidth) + "px";
+    tip.style.top = "-6px"; tip.style.transform = "translateY(-100%)";
+  }
+  function leave() { tip.style.display = "none"; cross.setAttribute("opacity", 0); dots.forEach(d => d.setAttribute("opacity", 0)); }
+  hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move); hit.addEventListener("pointerleave", leave);
+  const lg = document.createElement("div"); lg.className = "legend";
+  lg.innerHTML = series.filter(s => s.points.length).map(s => `<span>${swatch(s)}${esc(s.name)}</span>`).join("");
+  host.appendChild(lg);
+}
+
+function hypnogramSVG(host, hyp, hr) {
+  host.innerHTML = ""; host.classList.add("chart");
+  if (!hyp.length) { host.innerHTML = `<div class="empty">No overnight data from our collector for this night.</div>`; return; }
+  const W = Math.max(320, host.clientWidth || 640), H = 200, m = { l: 52, r: 12, t: 8, b: 24 };
+  const levels = ["awake", "rem", "light", "deep"], bandH = 22;
+  const t0 = hyp[0][0], t1 = hyp[hyp.length - 1][0] + 300;
+  const X = t => m.l + (t - t0) / (t1 - t0) * (W - m.l - m.r);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, host);
+  el("title", {}, svg).textContent = "Estimated sleep stages and heart rate";
+  levels.forEach((lv, i) => {
+    const y = m.t + i * bandH;
+    el("text", { x: m.l - 8, y: y + 15, "text-anchor": "end" }, svg).textContent = lv === "rem" ? "REM" : lv[0].toUpperCase() + lv.slice(1);
+    el("line", { x1: m.l, x2: W - m.r, y1: y + bandH, y2: y + bandH, stroke: "var(--line)" }, svg);
+  });
+  const cls = { awake: "var(--ink-3)", light: "color-mix(in srgb, var(--accent) 40%, var(--panel))", rem: "color-mix(in srgb, var(--accent) 70%, var(--panel))", deep: "var(--accent)" };
+  for (const [t, s] of hyp) {
+    const i = levels.indexOf(s);
+    el("rect", { x: X(t), y: m.t + i * bandH + 3, width: Math.max(1, X(t + 300) - X(t) - 1), height: bandH - 6, rx: 2, fill: cls[s] }, svg);
+  }
+  // heart-rate trace underneath
+  const top = m.t + levels.length * bandH + 12, bot = H - m.b;
+  const pts = hr.filter(p => p.t >= t0 && p.t <= t1);
+  if (pts.length > 1) {
+    const lo = Math.min(...pts.map(p => p.bpm)), hi = Math.max(...pts.map(p => p.bpm));
+    const Y = v => bot - (v - lo) / Math.max(hi - lo, 1) * (bot - top);
+    el("path", { d: pts.map((p, i) => (i ? "L" : "M") + X(p.t).toFixed(1) + " " + Y(p.bpm).toFixed(1)).join(""), fill: "none", stroke: "var(--whoop)", "stroke-width": 1.6 }, svg);
+    el("text", { x: m.l - 8, y: Y(lo) + 4, "text-anchor": "end" }, svg).textContent = Math.round(lo);
+    el("text", { x: m.l - 8, y: Y(hi) + 4, "text-anchor": "end" }, svg).textContent = Math.round(hi);
+  }
+  const span = t1 - t0, step = span > 6 * 3600 ? 7200 : 3600;
+  for (let t = Math.ceil(t0 / step) * step; t < t1; t += step)
+    el("text", { x: X(t), y: H - 6, "text-anchor": "middle" }, svg).textContent = new Date(t * 1000).toLocaleTimeString([], { hour: "numeric" });
+  const lg = document.createElement("div"); lg.className = "legend";
+  lg.innerHTML = `<span><span class="swatch st-deep"></span>Deep</span><span><span class="swatch st-rem"></span>REM</span><span><span class="swatch st-light"></span>Light</span><span><span class="swatch st-awake"></span>Awake</span><span>${swatch(SERIES[0])}Heart rate (bpm)</span>`;
+  host.appendChild(lg);
+}
+
+function scatterSVG(host, pairs, a, b, unitFmt) {
+  host.innerHTML = ""; host.classList.add("chart");
+  if (!pairs.length) { host.innerHTML = `<div class="empty">No nights where both sources have this metric yet.</div>`; return; }
+  const W = Math.max(300, Math.min(host.clientWidth || 420, 520)), H = W * .78, m = { l: 44, r: 12, t: 10, b: 34 };
+  const vals = pairs.flatMap(p => [p[1], p[2]]);
+  const t = niceTicks(Math.min(...vals), Math.max(...vals));
+  const X = v => m.l + (v - t.lo) / (t.hi - t.lo) * (W - m.l - m.r), Y = v => H - m.b - (v - t.lo) / (t.hi - t.lo) * (H - m.t - m.b);
+  const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img" }, host);
+  for (const v of t.ticks) {
+    el("line", { x1: m.l, x2: W - m.r, y1: Y(v), y2: Y(v), stroke: "var(--line)" }, svg);
+    el("text", { x: m.l - 6, y: Y(v) + 4, "text-anchor": "end" }, svg).textContent = unitFmt(v);
+    el("text", { x: X(v), y: H - m.b + 16, "text-anchor": "middle" }, svg).textContent = unitFmt(v);
+  }
+  el("line", { x1: X(t.lo), y1: Y(t.lo), x2: X(t.hi), y2: Y(t.hi), stroke: "var(--ink-3)", "stroke-dasharray": "4 4" }, svg);
+  const tip = document.createElement("div"); tip.className = "tip"; host.appendChild(tip);
+  for (const p of pairs) {
+    const c = el("circle", { cx: X(p[2]), cy: Y(p[1]), r: 4.5, fill: a.color, "fill-opacity": .75, stroke: "var(--panel)", "stroke-width": 1.5 }, svg);
+    const hitc = el("circle", { cx: X(p[2]), cy: Y(p[1]), r: 12, fill: "transparent" }, svg);
+    const show = () => { tip.innerHTML = `<div class="eyebrow" style="margin-bottom:4px">${esc(dayLabel(p[0]))}</div>
+      <div class="row"><span>${swatch(a)}${esc(a.name)}</span><b class="num">${esc(unitFmt(p[1], true))}</b></div>
+      <div class="row"><span>${swatch(b)}${esc(b.name)}</span><b class="num">${esc(unitFmt(p[2], true))}</b></div>`;
+      tip.style.display = "block"; const r = svg.getBoundingClientRect();
+      tip.style.left = Math.min(Math.max(0, X(p[2]) / W * r.width - 80), r.width - tip.offsetWidth) + "px";
+      tip.style.top = (Y(p[1]) / H * r.height - 12) + "px"; tip.style.transform = "translateY(-100%)"; c.setAttribute("r", 6); };
+    const hide = () => { tip.style.display = "none"; c.setAttribute("r", 4.5); };
+    hitc.addEventListener("pointerenter", show); hitc.addEventListener("pointerdown", show); hitc.addEventListener("pointerleave", hide);
+  }
+  el("text", { x: W - m.r, y: H - 2, "text-anchor": "end" }, svg).textContent = b.name + " →";
+  el("text", { x: m.l, y: m.t + 2, "text-anchor": "start", dy: "-0.2em" }, svg).textContent = "↑ " + a.name;
+  const lg = document.createElement("div"); lg.className = "legend";
+  lg.innerHTML = `<span>Dashed line: perfect agreement. Each dot is one night.</span>`;
+  host.appendChild(lg);
+}
+
+// ------------------------------------------------------------------ metric definitions
+const METRICS = {
+  recovery: { label: "Recovery", unit: "%", d: 0, fmt: v => fmt(v) + "%" },
+  hrv: { label: "HRV", unit: "ms", d: 0, fmt: v => fmt(v) + " ms" },
+  rhr: { label: "Resting HR", unit: "bpm", d: 0, fmt: v => fmt(v) + " bpm" },
+  sleep_min: { label: "Sleep", unit: "", d: 0, fmt: v => hm(v) },
+  strain: { label: "Strain", unit: "", d: 1, fmt: v => fmt(v, 1) },
+  resp_rate: { label: "Resp. rate", unit: "rpm", d: 1, fmt: v => fmt(v, 1) + " rpm" },
+  spo2: { label: "SpO₂", unit: "%", d: 1, fmt: v => fmt(v, 1) + "%" },
+  bedtime: { label: "Bedtime", fmt: v => clock(v) },
+  waketime: { label: "Wake time", fmt: v => clock(v) },
+};
+const NOT_DECODED = { "whoop:ours": ["spo2", "skin_temp"], "oura:ours": ["resp_rate", "spo2", "skin_temp"] };
+function baseline(key, day, field, n = 30) {
+  const vals = []; for (let i = 1; i <= n; i++) { const r = row(key, addDays(day, -i)); if (r && r[field] != null) vals.push(r[field]); }
+  return vals.length >= 5 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
+// ------------------------------------------------------------------ views
+function viewToday(root) {
+  const vis = visible(), day = S.day, i = S.days.indexOf(day);
+  const vals = f => vis.map(s => ({ s, v: (row(s.key, day) || {})[f] }));
+  const first = list => (list.find(x => x.v != null) || {}).v;
+  const rec = vals("recovery"), str = vals("strain"), slp = vals("sleep_perf");
+  const recLead = first(rec);
+
+  const isLatest = i === S.days.length - 1;
+  root.innerHTML = `
+    ${isLatest && S.alerts.length ? `<div class="alerts">${S.alerts.map(a => `<div class="alert ${a.level}" role="status">
+      <span class="alert-mark" aria-hidden="true">${a.level === "critical" ? "!" : a.level === "warn" ? "!" : "i"}</span>
+      <div><b>${esc(a.title)}</b><div>${esc(a.body)}</div></div></div>`).join("")}</div>` : ""}
+    <div class="panel">
+      <div class="panel-h">
+        <div class="daybar">
+          <button class="iconbtn" id="prevDay" aria-label="Previous day" ${i <= 0 ? "disabled" : ""}>‹</button>
+          <div><div class="eyebrow">Day</div><h2>${esc(dayLabel(day))}</h2></div>
+          <button class="iconbtn" id="nextDay" aria-label="Next day" ${i >= S.days.length - 1 ? "disabled" : ""}>›</button>
+        </div>
+        ${tier(recLead)}
+      </div>
+      <div class="brief" id="brief"></div>
+      ${vis.length ? `<div class="rings" id="rings"></div>` : `<div class="empty">Turn on at least one device and source above.</div>`}
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><h2>Vitals</h2><span class="muted" style="font-size:12px">vs your 30-day average</span></div>
+        <div class="scroll-x"><table class="vitals" id="vitals"></table></div>
+        ${vis.some(s => s.key === "oura:ours") ? `<p class="muted" style="font-size:12px;margin:10px 0 0">Oura · Ours HRV summarizes Oura's own 5-minute readings. Oura's API has no beat-to-beat data.</p>` : ""}
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Live heart rate</h2><span class="muted" id="liveWhen" style="font-size:12px"></span></div>
+        <div class="live"><span class="pulse off" id="livePulse"></span><span class="bpm num" id="liveBpm">—</span><span class="muted">bpm</span></div>
+        <div id="liveChart" style="margin-top:8px"></div>
+        <p class="note" id="liveNote" style="margin:10px 0 0">Shows when the strap is within Bluetooth range of the Pi or your laptop.</p>
+      </div>
+      <div class="panel" id="dayDetail"></div>
+      <div class="panel" id="journalPanel"></div>
+    </div>`;
+  renderBrief(day);
+  renderJournal(day);
+
+  if (vis.length) {
+    const rings = $("#rings", root);
+    const mk = (label, list, max, centerFmt, sub) => {
+      const box = document.createElement("div"); box.className = "ring";
+      const lead = first(list);
+      box.appendChild(ringSVG(list.map(x => ({ value: x.v, color: x.s.color, dash: x.s.dash })), max, lead == null ? "—" : centerFmt(lead), sub));
+      const lg = document.createElement("div"); lg.className = "ring-legend";
+      lg.innerHTML = `<div class="label" style="justify-content:center">${label}</div>` + list.map(x => `<div><span>${swatch(x.s)} ${esc(x.s.name.replace(" · ", " "))}</span><span class="num">${x.v == null ? "—" : esc(centerFmt(x.v))}</span></div>`).join("");
+      box.appendChild(lg); rings.appendChild(box);
+    };
+    mk("Recovery", rec, 100, v => Math.round(v) + "%");
+    mk("Strain", str, 21, v => Number(v).toFixed(1), "of 21");
+    mk("Sleep", slp, 100, v => Math.round(v) + "%", "of need");
+  }
+
+  // vitals table
+  const fields = [["hrv", "HRV", v => fmt(v) + " ms", 1], ["rhr", "Resting HR", v => fmt(v) + " bpm", -1], ["sleep_min", "Sleep", hm, 1],
+    ["resp_rate", "Resp. rate", v => fmt(v, 1), 0], ["spo2", "SpO₂", v => fmt(v, 1) + "%", 0], ["skin_temp", "Skin temp", v => (v > 20 ? fmt(v, 1) + "°C" : (v >= 0 ? "+" : "") + fmt(v, 2) + "°"), 0]];
+  const tbl = $("#vitals", root);
+  tbl.innerHTML = `<thead><tr><th>Metric</th>${vis.map(s => `<th>${swatch(s)} ${esc(s.name.replace(" · ", " "))}</th>`).join("")}</tr></thead><tbody>${
+    fields.map(([f, label, ff, good]) => `<tr><td>${label}</td>${vis.map(s => {
+      if ((NOT_DECODED[s.key] || []).includes(f)) return `<td><span class="na" title="Not decoded from the strap yet">not yet</span></td>`;
+      const r = row(s.key, day), v = r && r[f]; if (v == null) return `<td><span class="na">—</span></td>`;
+      const b = baseline(s.key, day, f); let delta = "";
+      if (b != null && good !== 0) { const dlt = v - b, pct = Math.round(dlt / b * 100);
+        if (Math.abs(pct) >= 1) delta = `<span class="delta ${dlt * good > 0 ? "up" : "down"}">${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}%</span>`; }
+      return `<td class="num">${esc(ff(v))}${delta}</td>`; }).join("")}</tr>`).join("")}</tbody>`;
+  if (!vis.length) tbl.innerHTML = "";
+
+  // day detail: sleep timing + workouts
+  const dd = $("#dayDetail", root);
+  const wk = (S.data.workouts || []).filter(w => new Date(w.start * 1000).toISOString().slice(0, 10) === day);
+  dd.innerHTML = `<div class="panel-h"><h2>Night and day</h2></div>
+    <div class="stats">${vis.map(s => { const r = row(s.key, day) || {};
+      return `<div class="stat"><div class="k">${swatch(s)} ${esc(s.name)}</div><div class="v num">${r.sleep_min != null ? hm(r.sleep_min) : "—"}</div>
+        <div class="s">${r.bedtime ? `${clock(r.bedtime)} → ${clock(r.waketime)}` : "No sleep recorded"}${r.calibrating ? " · calibrating" : ""}</div></div>`; }).join("")}</div>
+    ${wk.length ? `<div class="eyebrow" style="margin:14px 0 6px">Workouts</div>${wk.map(w => `<div class="check"><span class="num">${clock(w.start)}</span><b style="text-transform:capitalize">${esc(w.sport || "activity")}</b><span class="muted">strain ${fmt(w.strain, 1)} · avg ${fmt(w.avg_hr)} bpm · ${Math.round((w.end - w.start) / 60)} min</span></div>`).join("")}` : ""}`;
+
+  $("#prevDay", root).onclick = () => { S.day = S.days[i - 1]; render(); };
+  $("#nextDay", root).onclick = () => { S.day = S.days[i + 1]; render(); };
+  startLive();
+}
+
+async function renderBrief(day) {
+  if (!S.summaries[day]) { try { S.summaries[day] = await api(`/api/summary?day=${day}`); } catch { return; } }
+  const host = $("#brief"), s = S.summaries[day];
+  if (!host || S.day !== day || !s || !s.items || !s.items.length) return;
+  const src = s.series ? SERIES.find(x => x.key === s.series.join(":")) : null;
+  host.innerHTML = `<div class="eyebrow">Morning brief${src ? " · " + esc(src.name) : ""}</div>
+    <p class="brief-head">${esc(s.headline)}</p><ul>${s.items.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`;
+}
+
+function renderJournal(day) {
+  const host = $("#journalPanel"); if (!host) return;
+  const on = new Set(S.journal.entries.filter(e => e.day === day).map(e => e.tag));
+  const tags = [...new Set([...(S.journal.presets || []), ...S.journal.entries.map(e => e.tag)])];
+  host.innerHTML = `<div class="panel-h"><h2>Journal</h2><span class="muted" style="font-size:12px">What you did on ${esc(shortDay(day))}</span></div>
+    <div class="filters" role="group" aria-label="Journal tags">${tags.map(t => `<button class="chip" data-tag="${esc(t)}" aria-pressed="${on.has(t)}">${esc(t)}</button>`).join("")}</div>
+    <form id="tagForm" style="display:flex;gap:8px;margin-top:10px">
+      <input id="tagInput" maxlength="40" placeholder="Add your own tag" aria-label="New tag"
+        style="flex:1;min-width:0;height:34px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:0 10px;font:inherit;font-size:13px">
+      <button class="btn" type="submit">Add</button></form>
+    <p class="muted" style="font-size:12px;margin:10px 0 0">Tags are compared with the night that follows. Trends shows what they change once you've logged a few.</p>`;
+  host.querySelectorAll("[data-tag]").forEach(b => b.onclick = () => {
+    const now = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(now)); setTag(day, b.dataset.tag, now);
+  });
+  $("#tagForm", host).onsubmit = e => { e.preventDefault(); const v = $("#tagInput", host).value.trim(); if (!v) return;
+    setTag(day, v, true); renderJournal(day); };
+}
+
+let liveTimer = null;
+function startLive() {
+  clearInterval(liveTimer);
+  const tick = async () => {
+    if (S.view !== "today") return clearInterval(liveTimer);
+    let d; try { d = await api("/api/live"); } catch { return; }
+    const pts = (d.whoop || []).concat(d.oura || []);
+    const fresh = pts.length && Date.now() / 1000 - pts[pts.length - 1].ts < 20;
+    const bpm = $("#liveBpm"), pulse = $("#livePulse"), when = $("#liveWhen"), host = $("#liveChart"), note = $("#liveNote");
+    if (!bpm) return;
+    pulse.classList.toggle("off", !fresh);
+    bpm.textContent = fresh ? pts[pts.length - 1].bpm : "—";
+    const st = S.data.status || {}; const last = st.whoop && st.whoop.bluetooth && st.whoop.bluetooth.last_sample;
+    when.textContent = fresh ? "Live from WHOOP" : `Strap last seen ${ago(last)}`;
+    note.hidden = !!fresh;
+    if (fresh) lineChart(host, [{ ...SERIES[0], name: "WHOOP live", points: d.whoop.map(p => [p.ts, p.bpm]), gap: 30 }], { height: 110, xIsTime: true, yFmt: v => Math.round(v) });
+    else host.innerHTML = "";
+  };
+  tick(); liveTimer = setInterval(tick, 5000);
+}
+
+async function viewSleep(root) {
+  const vis = visible(), day = S.day, i = S.days.indexOf(day);
+  root.innerHTML = `
+    <div class="panel">
+      <div class="panel-h">
+        <div class="daybar">
+          <button class="iconbtn" id="prevDay" aria-label="Previous night" ${i <= 0 ? "disabled" : ""}>‹</button>
+          <div><div class="eyebrow">Night ending</div><h2>${esc(dayLabel(day))}</h2></div>
+          <button class="iconbtn" id="nextDay" aria-label="Next night" ${i >= S.days.length - 1 ? "disabled" : ""}>›</button>
+        </div>
+      </div>
+      <div class="stats">${vis.map(s => { const r = row(s.key, day) || {};
+        return `<div class="stat"><div class="k">${swatch(s)} ${esc(s.name)}</div><div class="v num">${hm(r.sleep_min)}</div>
+          <div class="s">${r.sleep_perf != null ? Math.round(r.sleep_perf) + "% of need · " : ""}${r.efficiency != null ? Math.round(r.efficiency) + "% efficient" : ""}</div></div>`; }).join("") || `<div class="empty">Turn on a device and source above.</div>`}</div>
+    </div>
+    <div class="panel">
+      <div class="panel-h"><h2>Stages and heart rate</h2><span class="muted" style="font-size:12px">WHOOP · Ours, stages estimated from heart rate</span></div>
+      <div id="hyp"></div>
+    </div>
+    <div class="grid2">
+      <div class="panel">
+        <div class="panel-h"><h2>Stage breakdown</h2></div>
+        <div class="stages" id="stages"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Timing</h2></div>
+        <div class="scroll-x"><table class="vitals"><thead><tr><th>Source</th><th>Bedtime</th><th>Wake</th><th>In bed</th></tr></thead><tbody>
+        ${vis.map(s => { const r = row(s.key, day) || {}; return `<tr><td>${swatch(s)} ${esc(s.name)}</td><td class="num">${clock(r.bedtime)}</td><td class="num">${clock(r.waketime)}</td><td class="num">${hm(r.in_bed_min)}</td></tr>`; }).join("")}
+        </tbody></table></div>
+      </div>
+    </div>`;
+  $("#prevDay", root).onclick = () => { S.day = S.days[i - 1]; render(); };
+  $("#nextDay", root).onclick = () => { S.day = S.days[i + 1]; render(); };
+
+  $("#stages", root).innerHTML = vis.map(s => {
+    const r = row(s.key, day) || {}; const parts = [["deep", r.deep_min], ["rem", r.rem_min], ["light", r.light_min], ["awake", r.awake_min]];
+    const tot = parts.reduce((a, [, v]) => a + (v || 0), 0);
+    if (!tot) return `<div class="stage-row"><div class="who">${swatch(s)} ${esc(s.name)}</div><span class="na">—</span></div>`;
+    return `<div class="stage-row"><div class="who">${swatch(s)} ${esc(s.name)}</div><div>
+      <div class="stackbar">${parts.map(([k, v]) => v ? `<div class="st-${k}" style="width:${v / tot * 100}%" title="${k}: ${hm(v)}"></div>` : "").join("")}</div>
+      <div class="muted num" style="font-size:11px;margin-top:4px">Deep ${hm(r.deep_min)} · REM ${hm(r.rem_min)} · Light ${hm(r.light_min)}</div></div></div>`;
+  }).join("") + `<div class="legend"><span><span class="swatch st-deep"></span>Deep</span><span><span class="swatch st-rem"></span>REM</span><span><span class="swatch st-light"></span>Light</span><span><span class="swatch st-awake"></span>Awake</span></div>`;
+
+  const key = "whoop:" + day;
+  if (!S.nights[key]) { try { S.nights[key] = await api(`/api/night?device=whoop&day=${day}`); } catch { S.nights[key] = { hypnogram: [], hr: [] }; } }
+  if (S.view === "sleep" && S.day === day) hypnogramSVG($("#hyp", root), S.nights[key].hypnogram, S.nights[key].hr);
+}
+
+function viewTrends(root) {
+  const vis = visible();
+  const m = METRICS[S.metric];
+  root.innerHTML = `
+    <div class="panel">
+      <div class="panel-h">
+        <h2>${esc(m.label)} over time</h2>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="metricSel" aria-label="Metric">${["recovery", "hrv", "rhr", "sleep_min", "strain", "resp_rate", "spo2"].map(k => `<option value="${k}" ${k === S.metric ? "selected" : ""}>${METRICS[k].label}</option>`).join("")}</select>
+          <div class="seg" role="group" aria-label="Range">${[7, 30, 90].map(n => `<button data-range="${n}" aria-pressed="${n === S.range}">${n}d</button>`).join("")}</div>
+        </div>
+      </div>
+      <div id="trend"></div>
+    </div>
+    <div class="panel"><div class="panel-h"><h2>Averages</h2><span class="muted" style="font-size:12px">last 7 days vs previous 7</span></div>
+      <div class="scroll-x"><table class="vitals" id="avgTbl"></table></div></div>
+    <div class="panel"><div class="panel-h"><h2>What changes your next night</h2><span class="muted" style="font-size:12px" id="patSrc"></span></div>
+      <div class="scroll-x" id="patterns"></div></div>`;
+  renderPatterns();
+  const end = S.days[S.days.length - 1], start = addDays(end, -S.range + 1);
+  const series = vis.map(s => ({ ...s, gap: 2.5 * 86400000, points: Object.values(S.idx[s.key] || {}).filter(r => r.day >= start && r[S.metric] != null)
+    .sort((a, b) => a.day < b.day ? -1 : 1).map(r => [new Date(r.day + "T12:00:00").getTime(), r[S.metric]]) }));
+  lineChart($("#trend", root), series, { yFmt: (v, tip) => tip ? m.fmt(v) : (S.metric === "sleep_min" ? (v / 60).toFixed(0) + "h" : fmt(v, m.d)), yMin: S.metric === "recovery" ? 0 : null, yMax: S.metric === "recovery" ? 100 : null });
+  const avg = (key, f, a, b) => { const v = []; for (let d = a; d >= b; d--) { const r = row(key, addDays(end, -d)); if (r && r[f] != null) v.push(r[f]); } return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
+  const fields = ["recovery", "hrv", "rhr", "sleep_min", "strain"];
+  $("#avgTbl", root).innerHTML = `<thead><tr><th>Source</th>${fields.map(f => `<th>${METRICS[f].label}</th>`).join("")}</tr></thead><tbody>${vis.map(s => `<tr><td>${swatch(s)} ${esc(s.name)}</td>${fields.map(f => {
+    const a = avg(s.key, f, 6, 0), b = avg(s.key, f, 13, 7);
+    const d = a != null && b != null && b ? Math.round((a - b) / b * 100) : null;
+    return `<td class="num">${a == null ? "—" : esc(METRICS[f].fmt(a))}${d ? `<span class="delta">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}%</span>` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody>`;
+  $("#metricSel", root).onchange = e => { S.metric = e.target.value; store.set("metric", S.metric); render(); };
+  root.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { S.range = +b.dataset.range; store.set("range", S.range); render(); });
+}
+
+function renderPatterns() {
+  const host = $("#patterns"); if (!host) return;
+  const P = S.patterns;
+  if (!P || !P.patterns || !P.patterns.length) {
+    host.innerHTML = `<div class="empty">Log journal tags on the Today screen. After about a week of entries, this shows how each one moves your next night.</div>`; return; }
+  const src = P.series ? SERIES.find(x => x.key === P.series.join(":")) : null;
+  $("#patSrc").innerHTML = src ? `${swatch(src)} ${esc(src.name)}` : "";
+  const cols = [["recovery", "Recovery", v => `${v > 0 ? "+" : ""}${fmt(v)} pts`], ["hrv", "HRV", v => `${v > 0 ? "+" : ""}${fmt(v)} ms`],
+    ["rhr", "Resting HR", v => `${v > 0 ? "+" : ""}${fmt(v, 1)} bpm`], ["sleep_min", "Sleep", v => `${v > 0 ? "+" : "−"}${Math.abs(Math.round(v))} min`]];
+  const label = { clear: "clear effect", possible: "possible effect", none: "no clear effect" };
+  host.innerHTML = `<table class="vitals"><thead><tr><th>Tag</th><th>Days</th>${cols.map(c => `<th>${c[1]}</th>`).join("")}</tr></thead><tbody>${
+    P.patterns.map(p => `<tr><td>${esc(p.tag)}</td><td class="num">${p.n}</td>${cols.map(([k, , f]) => { const m = p.metrics[k];
+      return m ? `<td class="num">${esc(f(m.diff))}<span class="eff ${m.strength}">${label[m.strength]}</span></td>` : `<td><span class="na">—</span></td>`; }).join("")}</tr>`).join("")}</tbody></table>
+    <p class="muted" style="font-size:12px;margin:10px 0 0">Average of the nights after a tagged day minus the nights after other days. Patterns, not proof: other things you did that day count too.</p>`;
+}
+
+const PAIRS = {
+  whoop_ours_vs_official: ["whoop:ours", "whoop:official", "Our WHOOP scores vs WHOOP's own"],
+  whoop_vs_oura: ["whoop:ours", "oura:official", "Our WHOOP scores vs Oura's official"],
+  official_whoop_vs_oura: ["whoop:official", "oura:official", "WHOOP official vs Oura official"],
+  oura_ours_vs_official: ["oura:ours", "oura:official", "Our Oura scores vs Oura's own"],
+  ours_whoop_vs_oura: ["whoop:ours", "oura:ours", "Our formulas: WHOOP vs Oura"],
+};
+function viewCompare(root) {
+  if (!S.compare) { root.innerHTML = `<div class="panel"><div class="empty">Loading comparisons…</div></div>`; return; }
+  const [ak, bk, title] = PAIRS[S.pair];
+  const A = SERIES.find(s => s.key === ak), B = SERIES.find(s => s.key === bk);
+  const res = S.compare[S.pair] || {};
+  const metricList = ["hrv", "rhr", "sleep_min", "recovery", "strain", "resp_rate", "bedtime", "waketime"];
+  const unit = { strain: (v, t) => fmt(v, 1), resp_rate: (v, t) => fmt(v, 1) + (t ? " rpm" : ""), hrv: (v, t) => fmt(v) + (t ? " ms" : ""), rhr: (v, t) => fmt(v) + (t ? " bpm" : ""), sleep_min: (v, t) => t ? hm(v) : (v / 60).toFixed(1) + "h", recovery: (v, t) => fmt(v) + (t ? "%" : ""), bedtime: v => clock(v), waketime: v => clock(v) };
+  const diffFmt = (k, v) => v == null ? "—" : k === "sleep_min" ? `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))} min` : (k === "bedtime" || k === "waketime") ? `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v) / 60)} min` : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
+  root.innerHTML = `
+    <div class="panel">
+      <div class="panel-h"><h2>How closely do they agree?</h2>
+        <select id="pairSel" aria-label="Comparison">${Object.entries(PAIRS).map(([k, v]) => `<option value="${k}" ${k === S.pair ? "selected" : ""}>${v[2]}</option>`).join("")}</select></div>
+      <div class="stats">${metricList.map(k => { const r = res[k] || { n: 0 };
+        const good = r.n && r.within_pct >= 80;
+        return `<button class="stat" data-m="${k}" style="text-align:left;border:${k === S.cmpMetric ? "1.5px solid var(--ink-2)" : "1.5px solid transparent"};cursor:pointer">
+          <div class="k">${METRICS[k].label}</div>
+          <div class="v num">${r.n ? r.within_pct + "%" : "—"}</div>
+          <div class="s">${r.n ? `within ${esc(r.tolerance.replace("±1800", "±30 min"))} · ${r.n} nights` : "no paired nights yet"}</div>
+          <div class="s">${r.n ? `avg diff ${diffFmt(k, r.mean_diff)}${r.r != null ? " · r " + r.r : ""}` : ""}</div>
+          ${r.n ? `<div class="s" style="color:${good ? "var(--good)" : "var(--warn)"};font-weight:600">${good ? "● Close match" : "● Needs work"}</div>` : ""}</button>`; }).join("")}</div>
+    </div>
+    <div class="grid2">
+      <div class="panel"><div class="panel-h"><h2>${METRICS[S.cmpMetric].label}, night by night</h2></div><div id="scatter"></div></div>
+      <div class="panel" id="ready"></div>
+    </div>`;
+  const pairs = ((res[S.cmpMetric] || {}).pairs || []);
+  scatterSVG($("#scatter", root), pairs, A, B, unit[S.cmpMetric]);
+  $("#pairSel", root).onchange = e => { S.pair = e.target.value; store.set("pair", S.pair); render(); };
+  root.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.cmpMetric = b.dataset.m; render(); });
+
+  const rd = $("#ready", root), R = S.readiness || {};
+  rd.innerHTML = `<div class="panel-h"><h2>Ready to cancel?</h2></div>` + ["whoop", "oura"].map(d => {
+    const r = R[d]; if (!r) return "";
+    const s = SERIES.find(x => x.device === d && x.source === "ours");
+    const pct = Math.min(100, Math.round(r.nights / r.target_nights * 100));
+    const names = { hrv: "HRV matches official", rhr: "Resting HR matches official", sleep_min: "Sleep time matches official", hrv_vs_oura: "HRV matches Oura" };
+    return `<div style="margin-bottom:16px">
+      <div class="panel-h" style="margin-bottom:6px"><b>${d === "whoop" ? "WHOOP membership" : "Oura membership"}</b>
+        <span class="tier"><i style="background:${r.ready ? "var(--good)" : r.blocked ? "var(--ink-3)" : "var(--warn)"}"></i>${r.ready ? "Ready" : r.blocked ? "Not possible yet" : "Not yet"}</span></div>
+      ${r.blocked ? `<p class="note" style="margin:0 0 8px">${esc(r.blocked)}</p>` : ""}
+      <div class="progress" role="progressbar" aria-valuenow="${r.nights}" aria-valuemax="${r.target_nights}"><div style="width:${pct}%"></div></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">${r.nights >= r.target_nights ? `${r.nights} paired nights (target ${r.target_nights} reached)` : `${r.nights} of ${r.target_nights} paired nights`}</div>
+      <div class="checklist">${Object.entries(r.checks).map(([k, c]) => { const ok = c.n >= 30 && c.within_pct >= 80;
+        return `<div class="check"><span class="mark" style="background:${ok ? "var(--good)" : c.n ? "var(--warn)" : "var(--ink-3)"}">${ok ? "✓" : c.n ? "…" : "–"}</span>
+        <span><b>${names[k] || k}</b><br><span class="muted">${c.n ? `${c.within_pct}% of ${c.n} nights within ${esc(c.tolerance)} (target 80% over 30 nights)` : "Waiting for data from both sources"}</span></span></div>`; }).join("")}</div></div>`;
+  }).join("");
+}
+
+function viewDevices(root) {
+  const st = S.data.status || {};
+  const card = (d, label) => {
+    const s = st[d] || { bluetooth: {}, official: {} }; const bt = s.bluetooth || {}, of = s.official || {};
+    const fresh = bt.last_sample && Date.now() / 1000 - bt.last_sample < 600;
+    const lastSync = (of.recent || [])[0];
+    return `<div class="panel dev">
+      <div class="panel-h" style="margin:0"><h2>${label}</h2><span class="tier"><i style="background:${fresh ? "var(--good)" : "var(--ink-3)"}"></i>${fresh ? "In range" : "Not in range"}</span></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Our Bluetooth collection</div>
+        <dl class="kv"><dt>Last reading</dt><dd>${ago(bt.last_sample)}</dd><dt>Coverage, last 24 h</dt><dd class="num">${bt.minutes_last_24h ? hm(bt.minutes_last_24h) : "—"}</dd></dl></div>
+      <div><div class="eyebrow" style="margin-bottom:6px">Official API</div>
+        <dl class="kv"><dt>Status</dt><dd>${of.connected ? "Connected" : of.configured ? "Not connected" : "Not set up"}</dd>
+        <dt>Last sync</dt><dd>${lastSync ? `${ago(lastSync.at)}${lastSync.ok ? "" : " · failed"}` : "—"}</dd>
+        <dt>Our scores tuned on</dt><dd>${s.calibration && s.calibration.recovery ? `${s.calibration.recovery.n} nights · ±${s.calibration.recovery.mae} recovery pts` : "not yet (needs 14 nights)"}</dd></dl>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          ${of.connected ? `<button class="btn" data-disconnect="${d}">Disconnect</button>` : `<a class="btn primary" style="display:inline-grid;place-items:center;text-decoration:none" href="/auth/${d}/start">Connect ${label}</a>`}
+        </div></div>
+      ${d === "whoop" ? `<p class="note" style="margin:0">MG decoding today: heart rate and R-R intervals work, so HRV, resting HR, sleep timing and strain are ours. SpO₂, skin temperature and breathing rate are not decoded yet and show “not yet”.</p>`
+        : `<p class="note" style="margin:0">“Oura · Ours” runs our formulas on heart rate and 5-minute HRV pulled from Oura's API, so it needs the membership for now. Direct Bluetooth support for Ring 4 will replace that once it's reliable.</p>`}
+    </div>`;
+  };
+  root.innerHTML = `<div class="grid2">${card("whoop", "WHOOP MG")}${card("oura", "Oura Ring 4")}</div>
+    <div class="panel"><div class="panel-h"><h2>Sync</h2><button class="btn" id="syncNow">Sync now</button></div>
+      <p class="muted" style="margin:0;font-size:13px">Official data syncs every 30 minutes and our scores recompute every 10. Travelling more than 14 days? Run the laptop collector to keep the strap's memory from filling.</p></div>`;
+  $("#syncNow", root).onclick = async e => { if (S.demo) { e.target.textContent = "Not available with sample data"; return; }
+    e.target.disabled = true; e.target.textContent = "Syncing…"; try { await fetch("/api/sync", { method: "POST" }); await load(); } finally { e.target.disabled = false; e.target.textContent = "Sync now"; } };
+  root.querySelectorAll("[data-disconnect]").forEach(b => b.onclick = async () => { if (S.demo) return; await fetch("/api/disconnect/" + b.dataset.disconnect, { method: "POST" }); await load(); });
+  if (S.demo) root.querySelectorAll('a[href^="/auth/"]').forEach(a => { a.removeAttribute("href"); a.setAttribute("aria-disabled", "true"); a.style.opacity = .6; });
+}
+
+// ------------------------------------------------------------------ shell
+const VIEWS = { today: viewToday, sleep: viewSleep, trends: viewTrends, compare: viewCompare, devices: viewDevices };
+function render() {
+  if (!S.data) return;
+  document.querySelectorAll("[data-filter]").forEach(b => { const [, v] = b.dataset.filter.split(":"); b.setAttribute("aria-pressed", String(!!S.filters[v])); });
+  document.querySelectorAll("[data-tab]").forEach(t => t.toggleAttribute("aria-current", false) || (t.dataset.tab === S.view && t.setAttribute("aria-current", "page")));
+  document.querySelectorAll("[data-view]").forEach(v => v.hidden = v.dataset.view !== S.view);
+  VIEWS[S.view](document.getElementById("view-" + S.view));
+}
+document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {
+  const [, v] = b.dataset.filter.split(":"); S.filters[v] = !S.filters[v]; store.set("filters", S.filters); render();
+});
+document.querySelectorAll("[data-tab]").forEach(t => t.onclick = () => { S.view = t.dataset.tab; try { history.replaceState(null, "", "#" + S.view); } catch {} window.scrollTo(0, 0); render(); });
+const h = (location.hash || "").slice(1).split("?")[0];
+if (VIEWS[h]) S.view = h;
+if (S.demo) document.getElementById("demoBadge").hidden = false;
+let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 200); });
+load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Vitals server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
+})();
+</script>

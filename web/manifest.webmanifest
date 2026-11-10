@@ -1,0 +1,9 @@
+{
+  "name": "Vitals Lab",
+  "short_name": "Vitals",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0C111A",
+  "theme_color": "#0C111A",
+  "icons": [{ "src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
