@@ -82,8 +82,9 @@ CREATE TABLE IF NOT EXISTS workouts (
     avg_hr   REAL,
     max_hr   REAL,
     calories REAL,
+    zones    TEXT,                      -- JSON: minutes in heart-rate zones 1-5
     PRIMARY KEY (device, source, id)
-) WITHOUT ROWID;
+) WITHOUT ROWID;                        -- source: 'official' | 'detected' | 'logged'
 
 -- Journal: things you did on a day, to see how they affect the following night.
 CREATE TABLE IF NOT EXISTS journal (
@@ -122,11 +123,20 @@ def connect() -> sqlite3.Connection:
 _conn: sqlite3.Connection | None = None
 
 
+def _migrate(c: sqlite3.Connection) -> None:
+    """Columns added after the first release (databases created earlier lack them)."""
+    cols = {r[1] for r in c.execute("PRAGMA table_info(workouts)")}
+    if "zones" not in cols:
+        c.execute("ALTER TABLE workouts ADD COLUMN zones TEXT")
+        c.commit()
+
+
 def conn() -> sqlite3.Connection:
     global _conn
     if _conn is None:
         _conn = connect()
         _conn.executescript(SCHEMA)
+        _migrate(_conn)
     return _conn
 
 

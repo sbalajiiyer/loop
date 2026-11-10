@@ -66,6 +66,14 @@ def cancel_readiness() -> dict:
     return data
 
 
+def workouts(days: int = 14) -> dict:
+    data = _get("/api/overview", days=max(1, min(int(days), 365)))
+    keep = ("day", "source", "sport", "start", "end", "strain", "avg_hr", "max_hr", "zones")
+    return {"notes": "source 'detected' = found in heart rate; 'logged' = entered by the user; 'official' = WHOOP app. "
+                     "zones = minutes in heart-rate zones 1-5.",
+            "rows": [{k: w.get(k) for k in keep if w.get(k) is not None} for w in data["workouts"] if w["device"] == "whoop"]}
+
+
 def habit_effects() -> dict:
     return _get("/api/patterns")
 
@@ -87,6 +95,8 @@ TOOLS = {
     "agreement": (agreement, "How closely Vitals' own numbers match the official ones, and WHOOP vs Oura.",
                   {"days": {"type": "integer", "default": 60}}),
     "cancel_readiness": (cancel_readiness, "Whether each membership could be cancelled yet, based on 30 nights of agreement.", {}),
+    "workouts": (workouts, "Workouts per day: detected from heart rate, logged by the user, or from the WHOOP app.",
+                 {"days": {"type": "integer", "default": 14}}),
     "habit_effects": (habit_effects, "How journal tags (alcohol, late meals, etc.) change the following night.", {}),
     "alerts": (alerts, "Current health or sync alerts (e.g. raised resting HR, strap not synced).", {}),
     "journal": (journal, "Journal tags logged per day.", {"days": {"type": "integer", "default": 30}}),

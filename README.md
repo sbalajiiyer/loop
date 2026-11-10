@@ -152,6 +152,36 @@ heart rate sit in each record. After saving, history is decoded automatically, w
 fills the hours you were away from the Pi and makes daily Strain complete. Live
 readings are never overwritten.
 
+## How the app is laid out
+
+The main screens (Today, Sleep, Trends) show **one number per metric: our own score**.
+Two switches under Devices → Display control the rest:
+
+- **Hide metrics with no data** (on by default): a metric that has never had a value
+  disappears from rings, rows, tiles and the Trends picker.
+- **Fill gaps with WHOOP's official values** (on by default): used only where ours is
+  missing, tagged "official". Turn it off to see the app as it will be after cancelling.
+
+Each ring says how much data is behind it ("15h 23m of 24h", tagged "partial" under 70%),
+because Strain only counts time the strap was heard. **Tonight** gives an in-bed time and
+sleep target from your need, a quarter of the last week's sleep debt (max 1 h) and extra
+after a high-strain day, working back from your usual wake time. These weights are a
+starting point in `web/app.html` (`sleepPlan`), not WHOOP's formula.
+
+**Compare** (opened from Devices) is the only place WHOOP's official numbers and Oura are
+set against ours, with the "Ready to cancel WHOOP?" check.
+
+## Workouts
+
+- **Detected:** at least 10 minutes at or above 45% of heart-rate reserve; easier minutes
+  or gaps under 4 minutes don't split a workout. Only time the strap was heard can be
+  detected. Constants are at the top of the workouts section in `vitals/analytics.py`.
+- **Logged:** add one on the Today screen (type, start, minutes). If the strap was heard
+  for at least half of it, it gets real heart-rate numbers and replaces the detected
+  stretch. Minutes that weren't heard count toward Strain at a typical effort for the
+  activity (`LOGGED_EFFORT`), and the Strain ring shows "+ 45m logged".
+- API: `POST /api/workouts {day, type, start: "HH:MM", minutes}`, `DELETE /api/workouts/{id}`.
+
 ## Journal, alerts and notifications
 
 - **Journal** (Today screen): tap tags for what you did that day. **Trends** shows how
@@ -207,7 +237,7 @@ vitals/mcp_server.py Claude desktop connector
 vitals/server.py   FastAPI app: dashboard, data API, ingest, OAuth
 web/app.html       the dashboard (single file, no build step)
 deploy/            systemd units, backup script
-tests/             framing tests (CLIENT_HELLO rebuilt byte for byte)
+tests/             framing, scoring, API mapping, workouts
 ```
 
 Protocol knowledge comes from the community reverse-engineering projects

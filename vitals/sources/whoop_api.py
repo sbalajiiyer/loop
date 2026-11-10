@@ -108,7 +108,8 @@ def sync() -> str:
         for w in workouts:
             sc = w.get("score") or {}
             conn.execute(
-                "INSERT OR REPLACE INTO workouts VALUES(?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR REPLACE INTO workouts(device,source,id,start,end,sport,strain,avg_hr,max_hr,calories) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?)",
                 ("whoop", "official", w["id"],
                  int(datetime.fromisoformat(w["start"].replace("Z", "+00:00")).timestamp()),
                  int(datetime.fromisoformat(w["end"].replace("Z", "+00:00")).timestamp()),

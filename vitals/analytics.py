@@ -8,7 +8,9 @@ Per local day D (the day you wake up on):
   recovery   0-100 from tonight's HRV and RHR against your own 30-night baseline,
              plus sleep vs need
   strain     0-21, from heart-rate reserve minutes over the day (Banister TRIMP,
-             compressed onto a 0-21 curve)
+             compressed onto a 0-21 curve); workouts you log count at a typical
+             effort for minutes the strap wasn't heard
+  workouts   detected as sustained stretches of raised heart rate
 
 All of these are approximations. The point of the trial period is to measure how
 closely they track the official numbers (see agreement()).
@@ -276,25 +278,161 @@ def recovery_score(device: str, day: date, night: dict) -> tuple[float | None, i
 
 
 # ---------------------------------------------------------------- daily strain
-def strain_score(device: str, day: date, rhr: float | None) -> dict | None:
+# Typical effort (fraction of heart-rate reserve) assumed for a logged workout's
+# minutes when the strap wasn't heard. Used only to fill those minutes.
+LOGGED_EFFORT = {"strength": 0.45, "run": 0.70, "cycle": 0.65, "walk": 0.35, "sport": 0.60, "other": 0.50}
+WORKOUT_HRR = 0.45        # a minute counts as "working" at or above this share of heart-rate reserve
+WORKOUT_MIN_MINUTES = 10  # shortest stretch reported as a workout
+WORKOUT_BRIDGE = 4 * 60   # easier minutes (or gaps) up to this long don't split a workout
+
+
+def _hrr(bpm: float, rest: float, mx: float) -> float:
+    return max(0.0, min(1.0, (bpm - rest) / max(mx - rest, 1)))
+
+
+def _trimp_minute(hrr: float) -> float:
+    return hrr * 0.64 * math.exp(1.92 * hrr) if hrr >= 0.3 else hrr * 0.15
+
+
+def _zone(bpm: float, mx: float) -> int:
+    pct = bpm / mx
+    return 0 if pct < 0.5 else min(5, int((pct - 0.5) / 0.1) + 1)
+
+
+def _strain_k(device: str) -> float:
+    return (db.kv_get(f"calib:{device}") or {}).get("strain_k") or DEFAULT_STRAIN_K
+
+
+def _day_minutes(device: str, day: date) -> tuple[int, int, dict[int, float]]:
     start, end = _local_midnight(day), _local_midnight(day + timedelta(days=1))
-    series = _minute_series(device, start, end)
-    bpms = [v["bpm"] for v in series.values() if v["bpm"]]
-    if len(bpms) < 60:
+    return start, end, {t: v["bpm"] for t, v in _minute_series(device, start, end).items() if v["bpm"]}
+
+
+def _logged(device: str, start: int, end: int) -> list[dict]:
+    return db.query("SELECT * FROM workouts WHERE device=? AND source='logged' AND start<? AND end>? ORDER BY start",
+                    (device, end, start))
+
+
+def _rest(bpms: list[float], rhr: float | None) -> float:
+    return rhr or (st.quantiles(bpms, n=20)[0] if len(bpms) >= 20 else 60.0)
+
+
+def strain_score(device: str, day: date, rhr: float | None) -> dict | None:
+    start, end, mins = _day_minutes(device, day)
+    logged = _logged(device, start, end)
+    bpms = list(mins.values())
+    if len(bpms) < 60 and not logged:
         return None
-    rest = rhr or st.quantiles(bpms, n=20)[0]
-    mx = config.max_hr()
+    rest, mx = _rest(bpms, rhr), config.max_hr()
     trimp, zone_min = 0.0, [0] * 6
     for b in bpms:
-        hrr = max(0.0, min(1.0, (b - rest) / max(mx - rest, 1)))
-        trimp += hrr * 0.64 * math.exp(1.92 * hrr) if hrr >= 0.3 else hrr * 0.15
-        pct = b / mx
-        zone = 0 if pct < 0.5 else min(5, int((pct - 0.5) / 0.1) + 1)
-        zone_min[zone] += 1
-    k = (db.kv_get(f"calib:{device}") or {}).get("strain_k") or DEFAULT_STRAIN_K
-    strain = 21 * (1 - math.exp(-trimp / k))
+        trimp += _trimp_minute(_hrr(b, rest, mx))
+        zone_min[_zone(b, mx)] += 1
+    # Logged workouts: minutes the strap wasn't heard count at a typical effort for that activity.
+    estimated = 0
+    for w in logged:
+        effort = LOGGED_EFFORT.get((w["sport"] or "").lower(), LOGGED_EFFORT["other"])
+        for t in range(max(w["start"], start) // 60 * 60, min(w["end"], end), 60):
+            if t not in mins:
+                trimp += _trimp_minute(effort)
+                estimated += 1
+    strain = 21 * (1 - math.exp(-trimp / _strain_k(device)))
     return {"strain": round(strain, 1),
-            "extra": {"zone_minutes": zone_min, "strain_coverage_min": len(bpms), "trimp": round(trimp, 2)}}
+            "extra": {"zone_minutes": zone_min, "strain_coverage_min": len(bpms), "trimp": round(trimp, 2),
+                      "strain_estimated_min": estimated}}
+
+
+# ---------------------------------------------------------------- workouts
+def _window_stats(mins: dict[int, float], a: int, b: int, rest: float, mx: float, k: float) -> dict | None:
+    """Heart-rate summary for the minutes in [a, b)."""
+    bpms = [v for t, v in mins.items() if a <= t < b]
+    if not bpms:
+        return None
+    zones, trimp = [0] * 5, 0.0
+    for v in bpms:
+        trimp += _trimp_minute(_hrr(v, rest, mx))
+        z = _zone(v, mx)
+        if z:
+            zones[z - 1] += 1
+    return {"avg_hr": round(st.fmean(bpms), 1), "max_hr": round(max(bpms)), "zones": zones,
+            "strain": round(21 * (1 - math.exp(-trimp / k)), 1), "covered": len(bpms)}
+
+
+def detect_workouts(device: str, day: date, rhr: float | None = None) -> list[dict]:
+    """Find workouts in a day's heart rate and store them (source 'detected').
+
+    A workout is a stretch of at least WORKOUT_MIN_MINUTES minutes at or above
+    WORKOUT_HRR of heart-rate reserve; easier minutes or gaps shorter than
+    WORKOUT_BRIDGE don't split it. A detected stretch that mostly overlaps a
+    workout you logged is dropped (yours wins, and gets the heart-rate numbers).
+    Only time the strap was heard can be detected.
+    """
+    start, end, mins = _day_minutes(device, day)
+    logged = _logged(device, start, end)
+    bpms = list(mins.values())
+    rest, mx, k = _rest(bpms, rhr), config.max_hr(), _strain_k(device)
+
+    blocks: list[list[int]] = []
+    cur = None
+    for t in sorted(mins):
+        if _hrr(mins[t], rest, mx) >= WORKOUT_HRR:
+            if cur and t - cur[1] <= WORKOUT_BRIDGE:
+                cur[1] = t
+            else:
+                cur = [t, t]
+                blocks.append(cur)
+    found = []
+    for a, b in blocks:
+        b += 60
+        working = sum(1 for t, v in mins.items() if a <= t < b and _hrr(v, rest, mx) >= WORKOUT_HRR)
+        if working < WORKOUT_MIN_MINUTES:
+            continue
+        if any(min(b, w["end"]) - max(a, w["start"]) >= 0.5 * (b - a) for w in logged):
+            continue
+        s = _window_stats(mins, a, b, rest, mx, k)
+        found.append({"id": f"d{a}", "start": a, "end": b, **s})
+
+    with db.tx() as c:
+        c.execute("DELETE FROM workouts WHERE device=? AND source='detected' AND start>=? AND start<?",
+                  (device, start, end))
+        for w in found:
+            c.execute("INSERT OR REPLACE INTO workouts(device,source,id,start,end,sport,strain,avg_hr,max_hr,zones) "
+                      "VALUES(?,?,?,?,?,?,?,?,?,?)",
+                      (device, "detected", w["id"], w["start"], w["end"], "Workout", w["strain"], w["avg_hr"],
+                       w["max_hr"], json.dumps(w["zones"])))
+        for w in logged:  # give logged workouts their heart-rate numbers when at least half was heard
+            s = _window_stats(mins, w["start"], w["end"], rest, mx, k)
+            half = s and s["covered"] * 60 >= 0.5 * (w["end"] - w["start"])
+            c.execute("UPDATE workouts SET strain=?, avg_hr=?, max_hr=?, zones=? WHERE device=? AND source='logged' AND id=?",
+                      (s["strain"] if half else None, s["avg_hr"] if half else None, s["max_hr"] if half else None,
+                       json.dumps(s["zones"]) if half else None, device, w["id"]))
+    return found
+
+
+def log_workout(device: str, day: str, sport: str, start_hhmm: str, minutes: int) -> dict:
+    """Record a workout the user did (kept even when heart rate missed it)."""
+    d = date.fromisoformat(day)
+    hh, mm = (int(x) for x in start_hhmm.split(":")[:2])
+    if not (0 <= hh < 24 and 0 <= mm < 60) or not 5 <= int(minutes) <= 600:
+        raise ValueError("start must be HH:MM and minutes between 5 and 600")
+    sport = sport.strip()[:30] or "Other"
+    begin = int(datetime(d.year, d.month, d.day, hh, mm, tzinfo=TZ).timestamp())
+    wid = f"l{begin}-{int(time.time() * 1000) % 100000}"
+    with db.tx() as c:
+        c.execute("INSERT INTO workouts(device,source,id,start,end,sport) VALUES(?,?,?,?,?,?)",
+                  (device, "logged", wid, begin, begin + int(minutes) * 60, sport))
+    recompute_day(device, d)
+    return db.query("SELECT * FROM workouts WHERE device=? AND source='logged' AND id=?", (device, wid))[0]
+
+
+def delete_workout(device: str, wid: str) -> bool:
+    rows = db.query("SELECT start FROM workouts WHERE device=? AND source='logged' AND id=?", (device, wid))
+    if not rows:
+        return False
+    with db.tx() as c:
+        c.execute("DELETE FROM workouts WHERE device=? AND source='logged' AND id=?", (device, wid))
+    recompute_day(device, datetime.fromtimestamp(rows[0]["start"], TZ).date())
+    return True
 
 
 # ---------------------------------------------------------------- auto-tuning
@@ -366,27 +504,34 @@ def recalibrate(device: str, days: int = 90) -> dict:
 
 
 # ---------------------------------------------------------------- driver
+WORKOUT_DEVICES = ("whoop",)  # detection needs dense heart rate; Oura's API samples are too sparse
+
+
+def recompute_day(device: str, day: date) -> bool:
+    """Score one day (night, strain, workouts). Returns True when the night was scored."""
+    now = int(time.time())
+    night = score_night(device, day)
+    rhr = None
+    if night:
+        rec, cal = recovery_score(device, day, night)
+        night.update({"recovery": rec, "calibrating": cal})
+        rhr = night["rhr"]
+        db.upsert_daily(device, "ours", day.isoformat(), night, now)
+    strain = strain_score(device, day, rhr)
+    if strain:
+        existing = db.query("SELECT extra FROM daily WHERE device=? AND source='ours' AND day=?",
+                            (device, day.isoformat()))
+        extra = json.loads(existing[0]["extra"]) if existing and existing[0]["extra"] else {}
+        extra.update(strain["extra"])
+        db.upsert_daily(device, "ours", day.isoformat(), {"strain": strain["strain"], "extra": extra}, now)
+    if device in WORKOUT_DEVICES:
+        detect_workouts(device, day, rhr)
+    return bool(night)
+
+
 def recompute(device: str, days: int = 3, today: date | None = None) -> int:
     today = today or datetime.now(TZ).date()
-    now, n = int(time.time()), 0
-    for i in range(days - 1, -1, -1):
-        day = today - timedelta(days=i)
-        night = score_night(device, day)
-        rhr = None
-        if night:
-            rec, cal = recovery_score(device, day, night)
-            night.update({"recovery": rec, "calibrating": cal})
-            rhr = night["rhr"]
-            db.upsert_daily(device, "ours", day.isoformat(), night, now)
-            n += 1
-        strain = strain_score(device, day, rhr)
-        if strain:
-            existing = db.query("SELECT extra FROM daily WHERE device=? AND source='ours' AND day=?",
-                                (device, day.isoformat()))
-            extra = json.loads(existing[0]["extra"]) if existing and existing[0]["extra"] else {}
-            extra.update(strain["extra"])
-            db.upsert_daily(device, "ours", day.isoformat(), {"strain": strain["strain"], "extra": extra}, now)
-    return n
+    return sum(recompute_day(device, today - timedelta(days=i)) for i in range(days - 1, -1, -1))
 
 
 # ---------------------------------------------------------------- agreement

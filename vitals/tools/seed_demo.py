@@ -154,6 +154,14 @@ def main() -> None:
             "calories": round(2300 + (500 if t["workout"] else 0)),
             "extra": {"sleep_score": R.randint(68, 90), "activity_score": R.randint(70, 95)}}, now)
 
+    # Lunchtime strength sessions on some rest days: out of range of the Pi, so only the log knows.
+    with db.tx() as c:
+        for i in range(DAYS - 3, 0, -1):
+            if not truths[i]["workout"] and i % 3 == 0:
+                day = today - timedelta(days=i)
+                begin = int(datetime(day.year, day.month, day.day, 12, 15, tzinfo=analytics.TZ).timestamp())
+                c.execute("INSERT OR REPLACE INTO workouts(device,source,id,start,end,sport) VALUES(?,?,?,?,?,?)",
+                          ("whoop", "logged", f"l{begin}", begin, begin + 45 * 60, "Strength"))
     print("scoring ...")
     analytics.recompute("whoop", days=DAYS + 1, today=today)
     analytics.recompute("oura", days=DAYS + 1, today=today)

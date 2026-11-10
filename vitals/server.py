@@ -135,10 +135,39 @@ def overview(days: int = 120) -> dict:
         "generated": int(time.time()),
         "profile": {"max_hr": config.max_hr(), "sleep_need_h": config.SLEEP_NEED_HOURS},
         "daily": _rows("SELECT * FROM daily WHERE day>=? ORDER BY day", (since,)),
-        "workouts": db.query("SELECT * FROM workouts WHERE start>=? ORDER BY start DESC",
-                             (int(time.time()) - days * 86400,)),
+        "workouts": _workouts(days),
         "status": status(),
     }
+
+
+def _workouts(days: int) -> list[dict]:
+    rows = db.query("SELECT * FROM workouts WHERE start>=? ORDER BY start", (int(time.time()) - days * 86400,))
+    for r in rows:
+        r["zones"] = json.loads(r["zones"]) if r.get("zones") else None
+        r["day"] = datetime.fromtimestamp(r["start"], analytics.TZ).date().isoformat()  # local day it started
+    return rows
+
+
+WORKOUT_TYPES = ["Strength", "Run", "Walk", "Cycle", "Sport", "Other"]
+
+
+@app.post("/api/workouts")
+async def post_workout(request: Request) -> dict:
+    """Log a workout: {day: YYYY-MM-DD, type, start: HH:MM, minutes}."""
+    body = await request.json()
+    try:
+        w = analytics.log_workout("whoop", body["day"], str(body.get("type", "Other")), str(body["start"]),
+                                  int(body["minutes"]))
+    except (KeyError, ValueError, TypeError) as e:
+        raise HTTPException(400, f"bad workout: {e}") from e
+    return {"ok": True, "id": w["id"]}
+
+
+@app.delete("/api/workouts/{wid}")
+def delete_workout(wid: str) -> dict:
+    if not analytics.delete_workout("whoop", wid):
+        raise HTTPException(404, "no logged workout with that id")
+    return {"ok": True}
 
 
 @app.get("/api/night")

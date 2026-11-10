@@ -3,8 +3,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: a phone-first instrument panel. Sticky filter bar on top, one column of
-   panels, tab bar at the bottom; widens to a two-column grid on desktop. */
+/* Layout: a phone-first instrument panel showing one number per metric. One column of
+   panels, tab bar at the bottom; two columns on desktop. Comparisons sit on a separate screen. */
 :root {
   --bg: #EEF1F5;
   --panel: #FFFFFF;
@@ -20,6 +20,7 @@
   --warn: #A9781A;
   --bad: #C8463A;
   --track: #E3E8EF;
+  --sleep: #5B62C9;
   --shadow: 0 1px 2px rgba(20, 26, 36, .06), 0 4px 16px rgba(20, 26, 36, .04);
   --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
   --f-body: "Instrument Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -29,14 +30,14 @@
   :root:not([data-theme="light"]) {
     --bg: #0C111A; --panel: #141B27; --panel-2: #1A2331; --ink: #E8EDF4; --ink-2: #A9B4C4;
     --ink-3: #758197; --line: #253042; --accent: #6C9BF0; --whoop: #C4851F; --oura: #8270E6;
-    --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B;
+    --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B; --sleep: #8F95EE;
     --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #0C111A; --panel: #141B27; --panel-2: #1A2331; --ink: #E8EDF4; --ink-2: #A9B4C4;
   --ink-3: #758197; --line: #253042; --accent: #6C9BF0; --whoop: #C4851F; --oura: #8270E6;
-  --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B;
+  --good: #3CB98A; --warn: #D6A23E; --bad: #E2675B; --track: #222C3B; --sleep: #8F95EE;
   --shadow: 0 1px 2px rgba(0,0,0,.3); color-scheme: dark;
 }
 * { box-sizing: border-box; }
@@ -164,7 +165,7 @@ select { height: 34px; border-radius: 10px; border: 1px solid var(--line); backg
 .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; background: color-mix(in srgb, var(--panel) 92%, transparent);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: max(8px, env(safe-area-inset-left, 0px)); padding-right: max(8px, env(safe-area-inset-right, 0px)); }
-.tabs-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(5, 1fr); }
+.tabs-in { max-width: 560px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
 .tab { display: grid; justify-items: center; gap: 2px; padding: 8px 0 9px; border: 0; background: none; cursor: pointer; color: var(--ink-3); font-size: 11px; font-weight: 600; }
 .tab svg { width: 22px; height: 22px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .tab[aria-current="page"] { color: var(--ink); }
@@ -182,18 +183,39 @@ select { height: 34px; border-radius: 10px; border: 1px solid var(--line); backg
 .eff { display: block; font-size: 11px; }
 .eff.clear { font-weight: 700; color: var(--ink); } .eff.possible { color: var(--ink-2); } .eff.none { color: var(--ink-3); }
 .empty { padding: 28px 12px; text-align: center; color: var(--ink-3); font-size: 13px; }
+
+.ring .label { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.src { font: 500 10px var(--f-mono); letter-spacing: .02em; text-transform: lowercase; color: var(--ink-3); border: 1px solid var(--line); border-radius: 99px; padding: 1px 6px; vertical-align: middle; white-space: nowrap; }
+.hidden-note { margin: 12px 0 0; font-size: 12px; color: var(--ink-3); }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); cursor: pointer; font-size: 12px; text-decoration: underline; }
+.linkrow { display: flex; justify-content: space-between; align-items: center; gap: 12px; text-align: left; cursor: pointer; width: 100%; }
+.setrow { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.setrow:last-child { border-bottom: 0; padding-bottom: 0; }
+.switch { flex: none; width: 46px; height: 28px; border-radius: 99px; border: 1px solid var(--line); background: var(--track); cursor: pointer; position: relative; padding: 0; }
+.switch i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--panel); box-shadow: var(--shadow); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--good); border-color: var(--good); }
+.switch[aria-checked="true"] i { transform: translateX(18px); }
+.switch:focus-visible, .linkbtn:focus-visible, .linkrow:focus-visible, .iconbtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .switch i { transition: none; } }
+.cov { font: 11px var(--f-mono); color: var(--ink-3); line-height: 1.5; }
+.src.warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--line)); }
+.tonight-main { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.bigtime { font-family: var(--f-display); font-size: 30px; font-weight: 700; line-height: 1.15; }
+.kv dt { min-width: 0; }
+.wk { padding: 10px 0; border-bottom: 1px solid var(--line); display: grid; gap: 5px; }
+.wk-top { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.wk-form { display: grid; grid-template-columns: 1fr 1fr 80px; gap: 8px; margin-top: 14px; }
+.wk-form .btn { grid-column: 1 / -1; }
+.wk-form input, .wk-form select { height: 36px; min-width: 0; width: 100%; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 0 10px; font: inherit; font-size: 13px; }
+.wk-form input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.zones { height: 10px; }
+.z1 { background: color-mix(in srgb, var(--accent) 30%, var(--panel)); } .z2 { background: color-mix(in srgb, var(--accent) 60%, var(--panel)); }
+.z3 { background: var(--accent); } .z4 { background: var(--warn); } .z5 { background: var(--bad); }
 </style>
 
 <header class="top">
   <div class="top-in">
     <div class="brand"><h1>Vitals Lab</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
-    <div class="filters" role="group" aria-label="Show data from">
-      <button class="chip" data-filter="device:whoop" aria-pressed="true"><span class="swatch" style="background:var(--whoop)"></span>WHOOP</button>
-      <button class="chip" data-filter="device:oura" aria-pressed="true"><span class="swatch" style="background:var(--oura)"></span>Oura</button>
-      <span class="sep" aria-hidden="true"></span>
-      <button class="chip" data-filter="source:ours" aria-pressed="true"><span class="swatch" style="background:var(--ink-2)"></span>Ours</button>
-      <button class="chip" data-filter="source:official" aria-pressed="true"><span class="swatch dash" style="border-color:var(--ink-2)"></span>Official</button>
-    </div>
   </div>
 </header>
 
@@ -210,7 +232,6 @@ select { height: 34px; border-radius: 10px; border: 1px solid var(--line); backg
     <button class="tab" data-tab="today"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Today</button>
     <button class="tab" data-tab="sleep"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>Sleep</button>
     <button class="tab" data-tab="trends"><svg viewBox="0 0 24 24"><path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg>Trends</button>
-    <button class="tab" data-tab="compare"><svg viewBox="0 0 24 24"><path d="M7 4v16M17 4v16"/><path d="M3 9h8M13 15h8"/></svg>Compare</button>
     <button class="tab" data-tab="devices"><svg viewBox="0 0 24 24"><rect x="7" y="3" width="10" height="18" rx="3"/><path d="M10 8h4"/></svg>Devices</button>
   </div>
 </nav>
@@ -322,7 +343,7 @@ function niceTicks(lo, hi, n = 4) {
 
 function ringSVG(arcs, max, center, sub) {
   const size = 160, c = size / 2, svg = el("svg", { viewBox: `0 0 ${size} ${size}`, role: "img" });
-  const n = Math.max(arcs.length, 1), w = n > 2 ? 7 : 10, gap = 3;
+  const n = Math.max(arcs.length, 1), w = n > 2 ? 7 : n > 1 ? 10 : 13, gap = 3;
   el("title", {}, svg).textContent = `${center} ${sub || ""}`;
   arcs.forEach((a, i) => {
     const r = c - 8 - i * (w + gap), circ = 2 * Math.PI * r;
@@ -355,7 +376,7 @@ function lineChart(host, series, { yFmt = v => v, height = 230, xIsTime = false,
     el("line", { x1: m.l, x2: W - m.r, y1: Y(t), y2: Y(t), stroke: "var(--line)", "stroke-width": 1 }, svg);
     el("text", { x: m.l - 8, y: Y(t) + 4, "text-anchor": "end" }, svg).textContent = yFmt(t);
   }
-  const nx = Math.min(6, Math.max(2, Math.floor((W - m.l - m.r) / 90)));
+  const nx = Math.min(6, Math.max(2, Math.floor((W - m.l - m.r) / (xIsTime && x1 - x0 < 600 ? 150 : 90))));
   for (let i = 0; i <= nx; i++) {
     const v = x0 + (x1 - x0) * i / nx;
     const lbl = xIsTime ? new Date(v * 1000).toLocaleTimeString([], x1 - x0 < 7200 ? { hour: "numeric", minute: "2-digit", second: x1 - x0 < 600 ? "2-digit" : undefined } : { hour: "numeric" })
@@ -491,36 +512,171 @@ function baseline(key, day, field, n = 30) {
   return vals.length >= 5 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
 }
 
-// ------------------------------------------------------------------ views
-function viewToday(root) {
-  const vis = visible(), day = S.day, i = S.days.indexOf(day);
-  const vals = f => vis.map(s => ({ s, v: (row(s.key, day) || {})[f] }));
-  const first = list => (list.find(x => x.v != null) || {}).v;
-  const rec = vals("recovery"), str = vals("strain"), slp = vals("sleep_perf");
-  const recLead = first(rec);
+// ------------------------------------------------------------------ product series
+// The main app shows one number per metric: our own WHOOP score, optionally filled from
+// WHOOP's official value (tagged) when ours is missing. Comparisons live on their own screen.
+const OURS = "whoop:ours", OFFICIAL = "whoop:official";
+S.prefs = Object.assign({ hideEmpty: true, fallback: true }, store.get("prefs", {}));
+if (S.demo) try { S.demo.overview.status.whoop.bluetooth.last_sample = Math.floor(Date.now() / 1000) - 40; } catch {}
+function val(day, f) {
+  const a = row(OURS, day), b = row(OFFICIAL, day);
+  if (a && a[f] != null) return { v: a[f], src: "ours" };
+  if (S.prefs.fallback && b && b[f] != null) return { v: b[f], src: "official" };
+  return { v: null, src: null };
+}
+const anyData = f => S.days.some(d => val(d, f).v != null);
+const shown = f => !S.prefs.hideEmpty || anyData(f);
+const srcTag = x => x.src === "official" ? ` <span class="src" title="Filled from WHOOP's official value because ours is missing">official</span>` : "";
+function avgBefore(day, f, n = 30) {
+  const vals = []; for (let i = 1; i <= n; i++) { const x = val(addDays(day, -i), f).v; if (x != null) vals.push(x); }
+  return vals.length >= 5 ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+const LABELS = { recovery: "Recovery", strain: "Strain", sleep_perf: "Sleep", hrv: "HRV", rhr: "Resting HR", sleep_min: "Sleep", resp_rate: "Resp. rate",
+  spo2: "SpO₂", skin_temp: "Skin temp", calories: "Calories", steps: "Steps", efficiency: "Efficiency", in_bed_min: "In bed", awake_min: "Awake",
+  bedtime: "Bedtime", waketime: "Wake time", stages: "Sleep stages" };
+function hiddenNote(fields) {
+  if (!S.prefs.hideEmpty) return "";
+  const gone = fields.filter(f => !anyData(f));
+  if (!gone.length) return "";
+  return `<p class="hidden-note">Hidden, no data: ${gone.map(f => esc(LABELS[f] || f)).join(", ")}. <button class="linkbtn" data-go="devices">Display settings</button></p>`;
+}
+// How much data is behind a day's scores. Strain only counts minutes the strap was heard.
+function coverage(day) {
+  const r = row(OURS, day), ex = (r && r.extra) || {}, latest = day === S.days[S.days.length - 1];
+  let total = 1440;
+  if (latest) { const mid = new Date(day + "T00:00:00").getTime() / 1000; total = Math.max(60, Math.min(1440, Math.round(((S.data.generated || Date.now() / 1000) - mid) / 60))); }
+  const sm = ex.strain_coverage_min, nm = ex.coverage_min, bed = r && r.in_bed_min;
+  return { latest, estimated: ex.strain_estimated_min || 0,
+    strain: sm == null ? null : { min: Math.min(sm, total), total, partial: sm / total < 0.7 },
+    night: nm == null || !bed ? null : { min: Math.min(nm, bed), total: bed, partial: nm / bed < 0.8 } };
+}
+// Tonight's sleep target: base need, plus a quarter of the last week's debt (max 1 h), plus extra after a hard day.
+function sleepPlan() {
+  const end = S.days[S.days.length - 1], need = ((S.data.profile || {}).sleep_need_h || 8) * 60;
+  let debt = 0, nights = 0; const wakes = [], effs = [];
+  for (let i = 0; i < 14; i++) { const d = addDays(end, -i), s = val(d, "sleep_min").v, w = val(d, "waketime").v, e = val(d, "efficiency").v;
+    if (i < 7 && s != null) { debt += Math.max(0, need - s); nights++; }
+    if (w) { const t = new Date(w * 1000); wakes.push(t.getHours() * 60 + t.getMinutes()); }
+    if (e) effs.push(e); }
+  if (nights < 3 || wakes.length < 3) return null;
+  wakes.sort((a, b) => a - b);
+  const wake = wakes[Math.floor(wakes.length / 2)], payback = Math.min(60, Math.round(debt * 0.25 / 5) * 5);
+  const st = val(end, "strain"), cov = coverage(end).strain;
+  const extra = st.v == null ? 0 : st.v >= 14 ? 30 : st.v >= 10 ? 15 : 0;
+  const target = need + payback + extra;
+  const eff = Math.max(85, Math.min(97, effs.length ? effs.reduce((a, b) => a + b, 0) / effs.length : 92));
+  const inBed = Math.round(target / (eff / 100) / 5) * 5;
+  const bed = ((wake - inBed) % 1440 + 1440) % 1440;
+  return { need, debt: Math.round(debt), nights, payback, extra, strain: st.v, strainPartial: st.src === "ours" && cov && cov.partial, target, inBed, bed, wake };
+}
+const clockMin = m => new Date(2000, 0, 1, Math.floor(m / 60), m % 60).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+// Workouts: detected from heart rate by the server, plus sessions you log yourself.
+// WHOOP's own records fill in (tagged "official") only where we have nothing for that time.
+const ZONES = ["50–60%", "60–70%", "70–80%", "80–90%", "90%+"];
+const localDay = ts => { const d = new Date(ts * 1000); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+function zoneBar(z) {
+  const tot = z.reduce((a, b) => a + b, 0); if (!tot) return "";
+  return `<div class="stackbar zones" role="img" aria-label="Minutes in each heart-rate zone">${z.map((m, k) => m ? `<div class="z${k + 1}" style="width:${m / tot * 100}%" title="Zone ${k + 1} (${ZONES[k]} of max): ${m} min"></div>` : "").join("")}</div>`;
+}
+function workoutsFor(day) {
+  const all = (S.data.workouts || []).filter(w => w.device === "whoop" && (w.day || localDay(w.start)) === day);
+  const mine = all.filter(w => w.source !== "official");
+  const extra = S.prefs.fallback ? all.filter(w => w.source === "official" && !mine.some(m => m.start < w.end && w.start < m.end)) : [];
+  return mine.concat(extra).sort((a, b) => a.start - b.start);
+}
+async function logWorkout(day, type, start, minutes) {
+  if (S.demo) { const t = new Date(`${day}T${start}:00`).getTime() / 1000;
+    S.data.workouts.push({ device: "whoop", source: "logged", id: "l" + Date.now(), day, start: t, end: t + minutes * 60, sport: type }); return; }
+  const r = await fetch("/api/workouts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ day, type, start, minutes }) });
+  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "The server refused that workout");
+  await load();
+}
+async function removeWorkout(id) {
+  if (S.demo) { S.data.workouts = S.data.workouts.filter(w => w.id !== id); return; }
+  await fetch("/api/workouts/" + encodeURIComponent(id), { method: "DELETE" }); await load();
+}
+function renderWorkouts(day) {
+  const host = $("#workoutPanel"); if (!host) return;
+  const list = workoutsFor(day), ex = (row(OURS, day) || {}).extra || {}, z = (ex.zone_minutes || []).slice(1), zt = z.reduce((a, b) => a + b, 0);
+  host.innerHTML = `<div class="panel-h"><h2>Workouts</h2><span class="muted" style="font-size:12px">${esc(shortDay(day))}</span></div>
+    ${list.length ? list.map(w => `<div class="wk"><div class="wk-top"><span><b style="text-transform:capitalize">${esc(w.sport || "Workout")}</b> <span class="src">${esc(w.source)}</span></span>
+      ${w.source === "logged" ? `<button class="linkbtn" data-del="${esc(w.id)}">Remove</button>` : ""}</div>
+      <div class="muted num" style="font-size:12px">${clock(w.start)} · ${Math.round((w.end - w.start) / 60)} min${w.avg_hr ? ` · avg ${Math.round(w.avg_hr)} bpm` : ""}${w.strain != null ? ` · strain ${fmt(w.strain, 1)}` : w.source === "logged" ? " · no heart rate, counted at a typical effort" : ""}</div>
+      ${w.zones ? zoneBar(w.zones) : ""}</div>`).join("") : `<div class="empty" style="padding:14px 0">No workouts for this day.</div>`}
+    ${zt ? `<div class="eyebrow" style="margin:14px 0 6px">Heart-rate zones, whole day</div>${zoneBar(z)}
+      <div class="legend">${z.map((m, k) => `<span><span class="swatch z${k + 1}"></span>Z${k + 1} <span class="num">${m}m</span></span>`).join("")}</div>` : ""}
+    <form id="wkForm" class="wk-form">
+      <select id="wkType" aria-label="Workout type">${["Strength", "Run", "Walk", "Cycle", "Sport", "Other"].map(t => `<option>${t}</option>`).join("")}</select>
+      <input id="wkStart" type="time" value="18:00" aria-label="Start time" required>
+      <input id="wkMin" type="number" min="5" max="600" step="5" value="45" aria-label="Minutes" required>
+      <button class="btn" type="submit">Log workout</button></form>
+    <p class="muted" id="wkMsg" style="font-size:12px;margin:10px 0 0">Logged sessions count toward Strain even when the strap wasn't heard, which is common with lifting or away from home.</p>`;
+  host.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => { b.disabled = true; await removeWorkout(b.dataset.del); if (S.demo) renderWorkouts(day); });
+  $("#wkForm", host).onsubmit = async e => { e.preventDefault(); const min = +$("#wkMin", host).value, start = $("#wkStart", host).value; if (!min || !start) return;
+    const btn = $("#wkForm button", host); btn.disabled = true;
+    try { await logWorkout(day, $("#wkType", host).value, start, min); if (S.demo) renderWorkouts(day); }
+    catch (err) { btn.disabled = false; const m = $("#wkMsg", host); m.textContent = "Couldn't log that workout: " + err.message; m.style.color = "var(--bad)"; } };
+}
+const go = v => { S.view = v; try { history.replaceState(null, "", "#" + v); } catch {} window.scrollTo(0, 0); render(); };
+const ONE = { name: "", color: "var(--accent)", dash: false };
 
+// ------------------------------------------------------------------ views
+function dayBar(i, eyebrow, day) {
+  return `<div class="daybar">
+    <button class="iconbtn" id="prevDay" aria-label="Previous day" ${i <= 0 ? "disabled" : ""}>‹</button>
+    <div><div class="eyebrow">${eyebrow}</div><h2>${esc(dayLabel(day))}</h2></div>
+    <button class="iconbtn" id="nextDay" aria-label="Next day" ${i >= S.days.length - 1 ? "disabled" : ""}>›</button></div>`;
+}
+function wireDayBar(root, i) {
+  $("#prevDay", root).onclick = () => { S.day = S.days[i - 1]; render(); };
+  $("#nextDay", root).onclick = () => { S.day = S.days[i + 1]; render(); };
+}
+
+function viewToday(root) {
+  const day = S.day, i = S.days.indexOf(day);
+  const rec = val(day, "recovery");
   const isLatest = i === S.days.length - 1;
+  const ringDefs = [["recovery", 100, v => Math.round(v) + "%", null, v => v >= 67 ? "var(--good)" : v >= 34 ? "var(--warn)" : "var(--bad)"],
+    ["strain", 21, v => Number(v).toFixed(1), "of 21", () => "var(--accent)"],
+    ["sleep_perf", 100, v => Math.round(v) + "%", "of need", () => "var(--sleep)"]].filter(r => shown(r[0]));
+  const vitalDefs = [["hrv", v => fmt(v) + " ms", 1], ["rhr", v => fmt(v) + " bpm", -1], ["resp_rate", v => fmt(v, 1) + " rpm", 0],
+    ["spo2", v => fmt(v, 1) + "%", 0], ["skin_temp", v => (v > 20 ? fmt(v, 1) + " °C" : (v >= 0 ? "+" : "") + fmt(v, 2) + "°"), 0]];
+  const vit = vitalDefs.filter(d => shown(d[0]));
+  const cal = val(day, "calories"), steps = val(day, "steps"), slp = val(day, "sleep_min"), bed = val(day, "bedtime"), wake = val(day, "waketime");
+  const cov = coverage(day), plan = isLatest && shown("sleep_min") ? sleepPlan() : null;
+  const lastSeen = (((S.data.status || {}).whoop || {}).bluetooth || {}).last_sample;
+  const calib = (row(OURS, day) || {}).calibrating;
+
   root.innerHTML = `
     ${isLatest && S.alerts.length ? `<div class="alerts">${S.alerts.map(a => `<div class="alert ${a.level}" role="status">
-      <span class="alert-mark" aria-hidden="true">${a.level === "critical" ? "!" : a.level === "warn" ? "!" : "i"}</span>
+      <span class="alert-mark" aria-hidden="true">${a.level === "info" ? "i" : "!"}</span>
       <div><b>${esc(a.title)}</b><div>${esc(a.body)}</div></div></div>`).join("")}</div>` : ""}
     <div class="panel">
-      <div class="panel-h">
-        <div class="daybar">
-          <button class="iconbtn" id="prevDay" aria-label="Previous day" ${i <= 0 ? "disabled" : ""}>‹</button>
-          <div><div class="eyebrow">Day</div><h2>${esc(dayLabel(day))}</h2></div>
-          <button class="iconbtn" id="nextDay" aria-label="Next day" ${i >= S.days.length - 1 ? "disabled" : ""}>›</button>
-        </div>
-        ${tier(recLead)}
-      </div>
+      <div class="panel-h">${dayBar(i, "Day", day)}${tier(rec.v)}</div>
       <div class="brief" id="brief"></div>
-      ${vis.length ? `<div class="rings" id="rings"></div>` : `<div class="empty">Turn on at least one device and source above.</div>`}
+      ${ringDefs.length ? `<div class="rings" id="rings" style="grid-template-columns:repeat(${ringDefs.length},minmax(0,1fr))"></div>` : `<div class="empty">No scores yet for this day.</div>`}
+      ${calib ? `<p class="hidden-note">Recovery is still calibrating: it needs 7 nights to learn your baseline.</p>` : ""}
+      ${isLatest ? `<p class="hidden-note">Strap last heard ${ago(lastSeen)}.${cov.strain && cov.strain.partial ? " Strain is partial: it only counts the time the strap was in range." : ""}</p>` : cov.strain && cov.strain.partial ? `<p class="hidden-note">Strain is partial: the strap was in range for ${hm(cov.strain.min)} of this day.</p>` : ""}
+      ${hiddenNote(["recovery", "strain", "sleep_perf"])}
     </div>
+    ${plan ? `<div class="panel tonight">
+      <div class="panel-h"><h2>Tonight</h2><span class="muted" style="font-size:12px">to wake at your usual ${clockMin(plan.wake)}</span></div>
+      <div class="tonight-main"><div><div class="eyebrow">In bed by</div><div class="bigtime num">${clockMin(plan.bed)}</div></div>
+        <div><div class="eyebrow">Sleep target</div><div class="bigtime num">${hm(plan.target)}</div></div></div>
+      <dl class="kv" style="margin:12px 0 0"><dt>Your nightly need</dt><dd class="num">${hm(plan.need)}</dd>
+        <dt>Sleep debt, last ${plan.nights} nights: ${hm(plan.debt)}</dt><dd class="num">+${plan.payback} min</dd>
+        <dt>Today's strain${plan.strain == null ? "" : " " + fmt(plan.strain, 1)}${plan.strainPartial ? " (partial)" : ""}</dt><dd class="num">+${plan.extra} min</dd></dl>
+    </div>` : ""}
     <div class="grid2">
       <div class="panel">
         <div class="panel-h"><h2>Vitals</h2><span class="muted" style="font-size:12px">vs your 30-day average</span></div>
-        <div class="scroll-x"><table class="vitals" id="vitals"></table></div>
-        ${vis.some(s => s.key === "oura:ours") ? `<p class="muted" style="font-size:12px;margin:10px 0 0">Oura · Ours HRV summarizes Oura's own 5-minute readings. Oura's API has no beat-to-beat data.</p>` : ""}
+        ${vit.length ? `<table class="vitals"><tbody>${vit.map(([f, ff, good]) => {
+          const x = val(day, f); if (x.v == null) return `<tr><td>${LABELS[f]}</td><td><span class="na">no reading</span></td></tr>`;
+          const b = avgBefore(day, f); let delta = "";
+          if (b != null && good !== 0) { const dlt = x.v - b, pct = Math.round(dlt / b * 100);
+            if (Math.abs(pct) >= 1) delta = `<span class="delta ${dlt * good > 0 ? "up" : "down"}">${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}%</span>`; }
+          return `<tr><td>${LABELS[f]}${srcTag(x)}</td><td class="num">${esc(ff(x.v))}${delta}</td></tr>`; }).join("")}</tbody></table>` : `<div class="empty">No vitals yet.</div>`}
+        ${hiddenNote(vitalDefs.map(d => d[0]))}
       </div>
       <div class="panel">
         <div class="panel-h"><h2>Live heart rate</h2><span class="muted" id="liveWhen" style="font-size:12px"></span></div>
@@ -528,52 +684,34 @@ function viewToday(root) {
         <div id="liveChart" style="margin-top:8px"></div>
         <p class="note" id="liveNote" style="margin:10px 0 0">Shows when the strap is within Bluetooth range of the Pi or your laptop.</p>
       </div>
-      <div class="panel" id="dayDetail"></div>
+      <div class="panel">
+        <div class="panel-h"><h2>Night and day</h2></div>
+        <div class="stats">
+          ${shown("sleep_min") ? `<div class="stat"><div class="k">Sleep${srcTag(slp)}</div><div class="v num">${hm(slp.v)}</div><div class="s">${bed.v ? `${clock(bed.v)} → ${clock(wake.v)}` : "No sleep recorded"}</div></div>` : ""}
+          ${shown("calories") ? `<div class="stat"><div class="k">Calories${srcTag(cal)}</div><div class="v num">${cal.v == null ? "—" : Math.round(cal.v).toLocaleString()}</div><div class="s">kcal burned</div></div>` : ""}
+          ${shown("steps") ? `<div class="stat"><div class="k">Steps${srcTag(steps)}</div><div class="v num">${steps.v == null ? "—" : Math.round(steps.v).toLocaleString()}</div><div class="s">today</div></div>` : ""}
+        </div>
+        ${hiddenNote(["sleep_min", "calories", "steps"])}
+      </div>
+      <div class="panel" id="workoutPanel"></div>
       <div class="panel" id="journalPanel"></div>
     </div>`;
   renderBrief(day);
   renderJournal(day);
-
-  if (vis.length) {
-    const rings = $("#rings", root);
-    const mk = (label, list, max, centerFmt, sub) => {
-      const box = document.createElement("div"); box.className = "ring";
-      const lead = first(list);
-      box.appendChild(ringSVG(list.map(x => ({ value: x.v, color: x.s.color, dash: x.s.dash })), max, lead == null ? "—" : centerFmt(lead), sub));
-      const lg = document.createElement("div"); lg.className = "ring-legend";
-      lg.innerHTML = `<div class="label" style="justify-content:center">${label}</div>` + list.map(x => `<div><span>${swatch(x.s)} ${esc(x.s.name.replace(" · ", " "))}</span><span class="num">${x.v == null ? "—" : esc(centerFmt(x.v))}</span></div>`).join("");
-      box.appendChild(lg); rings.appendChild(box);
-    };
-    mk("Recovery", rec, 100, v => Math.round(v) + "%");
-    mk("Strain", str, 21, v => Number(v).toFixed(1), "of 21");
-    mk("Sleep", slp, 100, v => Math.round(v) + "%", "of need");
+  renderWorkouts(day);
+  const rings = $("#rings", root);
+  if (rings) for (const [f, max, cf, sub, col] of ringDefs) {
+    const x = val(day, f), box = document.createElement("div"); box.className = "ring";
+    box.appendChild(ringSVG([{ value: x.v, color: x.v == null ? "var(--track)" : col(x.v), dash: false }], max, x.v == null ? "—" : cf(x.v), sub));
+    const lb = document.createElement("div"); lb.className = "label"; lb.innerHTML = LABELS[f] + srcTag(x);
+    box.appendChild(lb);
+    const c = x.src !== "ours" ? null : f === "strain" ? cov.strain : cov.night;
+    if (c) { const cv = document.createElement("div"); cv.className = "cov";
+      const sh = m => { m = Math.round(m); return m % 60 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${m / 60}h`; };
+      cv.innerHTML = `${sh(c.min)} of ${sh(c.total)}${f === "strain" && cov.latest ? " so far" : ""}${f === "strain" && cov.estimated ? ` + ${cov.estimated}m logged` : ""}${c.partial ? ` <span class="src warn">partial</span>` : ""}`; box.appendChild(cv); }
+    rings.appendChild(box);
   }
-
-  // vitals table
-  const fields = [["hrv", "HRV", v => fmt(v) + " ms", 1], ["rhr", "Resting HR", v => fmt(v) + " bpm", -1], ["sleep_min", "Sleep", hm, 1],
-    ["resp_rate", "Resp. rate", v => fmt(v, 1), 0], ["spo2", "SpO₂", v => fmt(v, 1) + "%", 0], ["skin_temp", "Skin temp", v => (v > 20 ? fmt(v, 1) + "°C" : (v >= 0 ? "+" : "") + fmt(v, 2) + "°"), 0]];
-  const tbl = $("#vitals", root);
-  tbl.innerHTML = `<thead><tr><th>Metric</th>${vis.map(s => `<th>${swatch(s)} ${esc(s.name.replace(" · ", " "))}</th>`).join("")}</tr></thead><tbody>${
-    fields.map(([f, label, ff, good]) => `<tr><td>${label}</td>${vis.map(s => {
-      if ((NOT_DECODED[s.key] || []).includes(f)) return `<td><span class="na" title="Not decoded from the strap yet">not yet</span></td>`;
-      const r = row(s.key, day), v = r && r[f]; if (v == null) return `<td><span class="na">—</span></td>`;
-      const b = baseline(s.key, day, f); let delta = "";
-      if (b != null && good !== 0) { const dlt = v - b, pct = Math.round(dlt / b * 100);
-        if (Math.abs(pct) >= 1) delta = `<span class="delta ${dlt * good > 0 ? "up" : "down"}">${pct > 0 ? "▲" : "▼"} ${Math.abs(pct)}%</span>`; }
-      return `<td class="num">${esc(ff(v))}${delta}</td>`; }).join("")}</tr>`).join("")}</tbody>`;
-  if (!vis.length) tbl.innerHTML = "";
-
-  // day detail: sleep timing + workouts
-  const dd = $("#dayDetail", root);
-  const wk = (S.data.workouts || []).filter(w => new Date(w.start * 1000).toISOString().slice(0, 10) === day);
-  dd.innerHTML = `<div class="panel-h"><h2>Night and day</h2></div>
-    <div class="stats">${vis.map(s => { const r = row(s.key, day) || {};
-      return `<div class="stat"><div class="k">${swatch(s)} ${esc(s.name)}</div><div class="v num">${r.sleep_min != null ? hm(r.sleep_min) : "—"}</div>
-        <div class="s">${r.bedtime ? `${clock(r.bedtime)} → ${clock(r.waketime)}` : "No sleep recorded"}${r.calibrating ? " · calibrating" : ""}</div></div>`; }).join("")}</div>
-    ${wk.length ? `<div class="eyebrow" style="margin:14px 0 6px">Workouts</div>${wk.map(w => `<div class="check"><span class="num">${clock(w.start)}</span><b style="text-transform:capitalize">${esc(w.sport || "activity")}</b><span class="muted">strain ${fmt(w.strain, 1)} · avg ${fmt(w.avg_hr)} bpm · ${Math.round((w.end - w.start) / 60)} min</span></div>`).join("")}` : ""}`;
-
-  $("#prevDay", root).onclick = () => { S.day = S.days[i - 1]; render(); };
-  $("#nextDay", root).onclick = () => { S.day = S.days[i + 1]; render(); };
+  wireDayBar(root, i);
   startLive();
 }
 
@@ -581,8 +719,7 @@ async function renderBrief(day) {
   if (!S.summaries[day]) { try { S.summaries[day] = await api(`/api/summary?day=${day}`); } catch { return; } }
   const host = $("#brief"), s = S.summaries[day];
   if (!host || S.day !== day || !s || !s.items || !s.items.length) return;
-  const src = s.series ? SERIES.find(x => x.key === s.series.join(":")) : null;
-  host.innerHTML = `<div class="eyebrow">Morning brief${src ? " · " + esc(src.name) : ""}</div>
+  host.innerHTML = `<div class="eyebrow">Morning brief</div>
     <p class="brief-head">${esc(s.headline)}</p><ul>${s.items.map(t => `<li>${esc(t)}</li>`).join("")}</ul>`;
 }
 
@@ -610,98 +747,83 @@ function startLive() {
   const tick = async () => {
     if (S.view !== "today") return clearInterval(liveTimer);
     let d; try { d = await api("/api/live"); } catch { return; }
-    const pts = (d.whoop || []).concat(d.oura || []);
+    const pts = d.whoop || [];
     const fresh = pts.length && Date.now() / 1000 - pts[pts.length - 1].ts < 20;
     const bpm = $("#liveBpm"), pulse = $("#livePulse"), when = $("#liveWhen"), host = $("#liveChart"), note = $("#liveNote");
     if (!bpm) return;
     pulse.classList.toggle("off", !fresh);
     bpm.textContent = fresh ? pts[pts.length - 1].bpm : "—";
     const st = S.data.status || {}; const last = st.whoop && st.whoop.bluetooth && st.whoop.bluetooth.last_sample;
-    when.textContent = fresh ? "Live from WHOOP" : `Strap last seen ${ago(last)}`;
+    when.textContent = fresh ? "Live from the strap" : `Strap last seen ${ago(last)}`;
     note.hidden = !!fresh;
-    if (fresh) lineChart(host, [{ ...SERIES[0], name: "WHOOP live", points: d.whoop.map(p => [p.ts, p.bpm]), gap: 30 }], { height: 110, xIsTime: true, yFmt: v => Math.round(v) });
+    if (fresh) lineChart(host, [{ ...ONE, name: "Heart rate", points: pts.map(p => [p.ts, p.bpm]), gap: 30 }], { height: 110, xIsTime: true, yFmt: v => Math.round(v) });
     else host.innerHTML = "";
   };
   tick(); liveTimer = setInterval(tick, 5000);
 }
 
 async function viewSleep(root) {
-  const vis = visible(), day = S.day, i = S.days.indexOf(day);
+  const day = S.day, i = S.days.indexOf(day);
+  const tiles = [["sleep_min", "Asleep", hm], ["sleep_perf", "Of your need", v => Math.round(v) + "%"], ["efficiency", "Efficiency", v => Math.round(v) + "%"],
+    ["in_bed_min", "In bed", hm], ["bedtime", "Bedtime", clock], ["waketime", "Wake time", clock], ["resp_rate", "Breathing", v => fmt(v, 1) + " rpm"]].filter(t => shown(t[0]));
+  const stageSrc = (row(OURS, day) || {}).deep_min != null ? row(OURS, day) : (S.prefs.fallback ? row(OFFICIAL, day) : null);
+  const stagesEver = anyData("deep_min");
   root.innerHTML = `
     <div class="panel">
-      <div class="panel-h">
-        <div class="daybar">
-          <button class="iconbtn" id="prevDay" aria-label="Previous night" ${i <= 0 ? "disabled" : ""}>‹</button>
-          <div><div class="eyebrow">Night ending</div><h2>${esc(dayLabel(day))}</h2></div>
-          <button class="iconbtn" id="nextDay" aria-label="Next night" ${i >= S.days.length - 1 ? "disabled" : ""}>›</button>
-        </div>
-      </div>
-      <div class="stats">${vis.map(s => { const r = row(s.key, day) || {};
-        return `<div class="stat"><div class="k">${swatch(s)} ${esc(s.name)}</div><div class="v num">${hm(r.sleep_min)}</div>
-          <div class="s">${r.sleep_perf != null ? Math.round(r.sleep_perf) + "% of need · " : ""}${r.efficiency != null ? Math.round(r.efficiency) + "% efficient" : ""}</div></div>`; }).join("") || `<div class="empty">Turn on a device and source above.</div>`}</div>
+      <div class="panel-h">${dayBar(i, "Night ending", day)}</div>
+      ${tiles.length ? `<div class="stats">${tiles.map(([f, k, ff]) => { const x = val(day, f);
+        return `<div class="stat"><div class="k">${k}${srcTag(x)}</div><div class="v num">${x.v == null ? "—" : esc(ff(x.v))}</div></div>`; }).join("")}</div>` : `<div class="empty">No sleep data yet.</div>`}
+      ${hiddenNote(["sleep_min", "sleep_perf", "efficiency", "in_bed_min", "bedtime", "waketime", "resp_rate"])}
     </div>
-    <div class="panel">
-      <div class="panel-h"><h2>Stages and heart rate</h2><span class="muted" style="font-size:12px">WHOOP · Ours, stages estimated from heart rate</span></div>
+    ${stagesEver || !S.prefs.hideEmpty ? `<div class="panel">
+      <div class="panel-h"><h2>Stages and heart rate</h2><span class="muted" style="font-size:12px">stages estimated from heart rate</span></div>
       <div id="hyp"></div>
-    </div>
-    <div class="grid2">
-      <div class="panel">
-        <div class="panel-h"><h2>Stage breakdown</h2></div>
-        <div class="stages" id="stages"></div>
-      </div>
-      <div class="panel">
-        <div class="panel-h"><h2>Timing</h2></div>
-        <div class="scroll-x"><table class="vitals"><thead><tr><th>Source</th><th>Bedtime</th><th>Wake</th><th>In bed</th></tr></thead><tbody>
-        ${vis.map(s => { const r = row(s.key, day) || {}; return `<tr><td>${swatch(s)} ${esc(s.name)}</td><td class="num">${clock(r.bedtime)}</td><td class="num">${clock(r.waketime)}</td><td class="num">${hm(r.in_bed_min)}</td></tr>`; }).join("")}
-        </tbody></table></div>
-      </div>
-    </div>`;
-  $("#prevDay", root).onclick = () => { S.day = S.days[i - 1]; render(); };
-  $("#nextDay", root).onclick = () => { S.day = S.days[i + 1]; render(); };
-
-  $("#stages", root).innerHTML = vis.map(s => {
-    const r = row(s.key, day) || {}; const parts = [["deep", r.deep_min], ["rem", r.rem_min], ["light", r.light_min], ["awake", r.awake_min]];
+      <div class="stages" id="stages" style="margin-top:14px"></div>
+    </div>` : `<div class="panel">${hiddenNote(["stages"]) || ""}</div>`}`;
+  wireDayBar(root, i);
+  const sh = $("#stages", root);
+  if (sh) {
+    const r = stageSrc || {}; const parts = [["deep", r.deep_min], ["rem", r.rem_min], ["light", r.light_min], ["awake", r.awake_min]];
     const tot = parts.reduce((a, [, v]) => a + (v || 0), 0);
-    if (!tot) return `<div class="stage-row"><div class="who">${swatch(s)} ${esc(s.name)}</div><span class="na">—</span></div>`;
-    return `<div class="stage-row"><div class="who">${swatch(s)} ${esc(s.name)}</div><div>
-      <div class="stackbar">${parts.map(([k, v]) => v ? `<div class="st-${k}" style="width:${v / tot * 100}%" title="${k}: ${hm(v)}"></div>` : "").join("")}</div>
-      <div class="muted num" style="font-size:11px;margin-top:4px">Deep ${hm(r.deep_min)} · REM ${hm(r.rem_min)} · Light ${hm(r.light_min)}</div></div></div>`;
-  }).join("") + `<div class="legend"><span><span class="swatch st-deep"></span>Deep</span><span><span class="swatch st-rem"></span>REM</span><span><span class="swatch st-light"></span>Light</span><span><span class="swatch st-awake"></span>Awake</span></div>`;
-
+    sh.innerHTML = tot ? `<div class="stackbar">${parts.map(([k, v]) => v ? `<div class="st-${k}" style="width:${v / tot * 100}%" title="${k}: ${hm(v)}"></div>` : "").join("")}</div>
+      <div class="stats">${parts.map(([k, v]) => `<div class="stat"><div class="k"><span class="swatch st-${k}" style="display:inline-block;vertical-align:middle;margin-right:6px"></span>${k === "rem" ? "REM" : k[0].toUpperCase() + k.slice(1)}</div><div class="v num" style="font-size:20px">${hm(v)}</div><div class="s num">${Math.round((v || 0) / tot * 100)}%</div></div>`).join("")}</div>` : `<div class="empty">No stage breakdown for this night.</div>`;
+  }
   const key = "whoop:" + day;
   if (!S.nights[key]) { try { S.nights[key] = await api(`/api/night?device=whoop&day=${day}`); } catch { S.nights[key] = { hypnogram: [], hr: [] }; } }
-  if (S.view === "sleep" && S.day === day) hypnogramSVG($("#hyp", root), S.nights[key].hypnogram, S.nights[key].hr);
+  const hy = $("#hyp", root);
+  if (hy && S.view === "sleep" && S.day === day) hypnogramSVG(hy, S.nights[key].hypnogram, S.nights[key].hr);
 }
 
 function viewTrends(root) {
-  const vis = visible();
+  const all = ["recovery", "hrv", "rhr", "sleep_min", "strain", "resp_rate", "spo2"], list = all.filter(shown);
+  if (!list.length) { root.innerHTML = `<div class="panel"><div class="empty">No data to chart yet.</div></div>`; return; }
+  if (!list.includes(S.metric)) S.metric = list[0];
   const m = METRICS[S.metric];
   root.innerHTML = `
     <div class="panel">
       <div class="panel-h">
         <h2>${esc(m.label)} over time</h2>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <select id="metricSel" aria-label="Metric">${["recovery", "hrv", "rhr", "sleep_min", "strain", "resp_rate", "spo2"].map(k => `<option value="${k}" ${k === S.metric ? "selected" : ""}>${METRICS[k].label}</option>`).join("")}</select>
+          <select id="metricSel" aria-label="Metric">${list.map(k => `<option value="${k}" ${k === S.metric ? "selected" : ""}>${METRICS[k].label}</option>`).join("")}</select>
           <div class="seg" role="group" aria-label="Range">${[7, 30, 90].map(n => `<button data-range="${n}" aria-pressed="${n === S.range}">${n}d</button>`).join("")}</div>
         </div>
       </div>
       <div id="trend"></div>
+      ${hiddenNote(all)}
     </div>
-    <div class="panel"><div class="panel-h"><h2>Averages</h2><span class="muted" style="font-size:12px">last 7 days vs previous 7</span></div>
-      <div class="scroll-x"><table class="vitals" id="avgTbl"></table></div></div>
-    <div class="panel"><div class="panel-h"><h2>What changes your next night</h2><span class="muted" style="font-size:12px" id="patSrc"></span></div>
+    <div class="panel"><div class="panel-h"><h2>Averages</h2><span class="muted" style="font-size:12px">last 7 days vs the 7 before</span></div>
+      <table class="vitals" id="avgTbl"></table></div>
+    <div class="panel"><div class="panel-h"><h2>What changes your next night</h2></div>
       <div class="scroll-x" id="patterns"></div></div>`;
   renderPatterns();
   const end = S.days[S.days.length - 1], start = addDays(end, -S.range + 1);
-  const series = vis.map(s => ({ ...s, gap: 2.5 * 86400000, points: Object.values(S.idx[s.key] || {}).filter(r => r.day >= start && r[S.metric] != null)
-    .sort((a, b) => a.day < b.day ? -1 : 1).map(r => [new Date(r.day + "T12:00:00").getTime(), r[S.metric]]) }));
-  lineChart($("#trend", root), series, { yFmt: (v, tip) => tip ? m.fmt(v) : (S.metric === "sleep_min" ? (v / 60).toFixed(0) + "h" : fmt(v, m.d)), yMin: S.metric === "recovery" ? 0 : null, yMax: S.metric === "recovery" ? 100 : null });
-  const avg = (key, f, a, b) => { const v = []; for (let d = a; d >= b; d--) { const r = row(key, addDays(end, -d)); if (r && r[f] != null) v.push(r[f]); } return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
-  const fields = ["recovery", "hrv", "rhr", "sleep_min", "strain"];
-  $("#avgTbl", root).innerHTML = `<thead><tr><th>Source</th>${fields.map(f => `<th>${METRICS[f].label}</th>`).join("")}</tr></thead><tbody>${vis.map(s => `<tr><td>${swatch(s)} ${esc(s.name)}</td>${fields.map(f => {
-    const a = avg(s.key, f, 6, 0), b = avg(s.key, f, 13, 7);
-    const d = a != null && b != null && b ? Math.round((a - b) / b * 100) : null;
-    return `<td class="num">${a == null ? "—" : esc(METRICS[f].fmt(a))}${d ? `<span class="delta">${d > 0 ? "▲" : "▼"} ${Math.abs(d)}%</span>` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody>`;
+  const pts = S.days.filter(d => d >= start).map(d => [new Date(d + "T12:00:00").getTime(), val(d, S.metric).v]).filter(p => p[1] != null);
+  lineChart($("#trend", root), [{ ...ONE, name: m.label, gap: 2.5 * 86400000, points: pts }],
+    { yFmt: (v, tip) => tip ? m.fmt(v) : (S.metric === "sleep_min" ? (v / 60).toFixed(0) + "h" : fmt(v, m.d)), yMin: S.metric === "recovery" ? 0 : null, yMax: S.metric === "recovery" ? 100 : null });
+  const avg = (f, a, b) => { const v = []; for (let d = a; d >= b; d--) { const x = val(addDays(end, -d), f).v; if (x != null) v.push(x); } return v.length ? v.reduce((x, y) => x + y, 0) / v.length : null; };
+  $("#avgTbl", root).innerHTML = `<thead><tr><th>Metric</th><th>Last 7</th><th>Before</th><th>Change</th></tr></thead><tbody>${list.map(f => {
+    const a = avg(f, 6, 0), b = avg(f, 13, 7), d = a != null && b ? Math.round((a - b) / b * 100) : null;
+    return `<tr><td>${METRICS[f].label}</td><td class="num">${a == null ? "—" : esc(METRICS[f].fmt(a))}</td><td class="num muted">${b == null ? "—" : esc(METRICS[f].fmt(b))}</td><td class="num">${d ? `${d > 0 ? "▲" : "▼"} ${Math.abs(d)}%` : "—"}</td></tr>`; }).join("")}</tbody>`;
   $("#metricSel", root).onchange = e => { S.metric = e.target.value; store.set("metric", S.metric); render(); };
   root.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { S.range = +b.dataset.range; store.set("range", S.range); render(); });
 }
@@ -711,8 +833,6 @@ function renderPatterns() {
   const P = S.patterns;
   if (!P || !P.patterns || !P.patterns.length) {
     host.innerHTML = `<div class="empty">Log journal tags on the Today screen. After about a week of entries, this shows how each one moves your next night.</div>`; return; }
-  const src = P.series ? SERIES.find(x => x.key === P.series.join(":")) : null;
-  $("#patSrc").innerHTML = src ? `${swatch(src)} ${esc(src.name)}` : "";
   const cols = [["recovery", "Recovery", v => `${v > 0 ? "+" : ""}${fmt(v)} pts`], ["hrv", "HRV", v => `${v > 0 ? "+" : ""}${fmt(v)} ms`],
     ["rhr", "Resting HR", v => `${v > 0 ? "+" : ""}${fmt(v, 1)} bpm`], ["sleep_min", "Sleep", v => `${v > 0 ? "+" : "−"}${Math.abs(Math.round(v))} min`]];
   const label = { clear: "clear effect", possible: "possible effect", none: "no clear effect" };
@@ -722,106 +842,97 @@ function renderPatterns() {
     <p class="muted" style="font-size:12px;margin:10px 0 0">Average of the nights after a tagged day minus the nights after other days. Patterns, not proof: other things you did that day count too.</p>`;
 }
 
+function viewDevices(root) {
+  const st = S.data.status || {}, s = st.whoop || { bluetooth: {}, official: {} }, bt = s.bluetooth || {}, of = s.official || {};
+  const fresh = bt.last_sample && Date.now() / 1000 - bt.last_sample < 600;
+  const sw = (key, title, body) => `<div class="setrow"><div><b>${title}</b><div class="muted" style="font-size:12px">${body}</div></div>
+    <button class="switch" role="switch" id="pref-${key}" data-pref="${key}" aria-checked="${!!S.prefs[key]}" aria-label="${title}"><i></i></button></div>`;
+  root.innerHTML = `
+    <div class="grid2">
+      <div class="panel dev">
+        <div class="panel-h" style="margin:0"><h2>WHOOP MG</h2><span class="tier"><i style="background:${fresh ? "var(--good)" : "var(--ink-3)"}"></i>${fresh ? "In range" : "Not in range"}</span></div>
+        <dl class="kv"><dt>Last reading</dt><dd>${ago(bt.last_sample)}</dd><dt>Coverage, last 24 h</dt><dd class="num">${bt.minutes_last_24h ? hm(bt.minutes_last_24h) : "—"}</dd></dl>
+        <p class="note" style="margin:0">From the strap today: heart rate and beat intervals, which give our HRV, resting HR, breathing rate, sleep, Recovery and Strain. SpO₂ and skin temperature are not decoded.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-h"><h2>Display</h2></div>
+        ${sw("hideEmpty", "Hide metrics with no data", "Rings, rows, tiles and chart options disappear when a metric has never had a value.")}
+        ${sw("fallback", "Fill gaps with WHOOP's official values", "Used only where ours is missing, and tagged “official”. Stops when the membership ends.")}
+      </div>
+    </div>
+    <button class="panel linkrow" data-go="compare"><span><b>Compare</b><span class="muted" style="display:block;font-size:13px">How our scores track WHOOP's own and Oura, and whether it's safe to cancel.</span></span><span aria-hidden="true" style="font-size:22px">›</span></button>
+    <div class="panel"><div class="panel-h"><h2>Sync</h2><button class="btn" id="syncNow">Sync now</button></div>
+      <p class="muted" style="margin:0;font-size:13px">Our scores recompute every 10 minutes. Travelling more than 14 days? Run the laptop collector so the strap's memory doesn't fill.</p></div>`;
+  root.querySelectorAll("[data-pref]").forEach(b => b.onclick = () => { const k = b.dataset.pref; S.prefs[k] = !S.prefs[k]; store.set("prefs", S.prefs); render(); });
+  $("#syncNow", root).onclick = async e => { if (S.demo) { e.target.textContent = "Not available with sample data"; return; }
+    e.target.disabled = true; e.target.textContent = "Syncing…"; try { await fetch("/api/sync", { method: "POST" }); await load(); } finally { e.target.disabled = false; e.target.textContent = "Sync now"; } };
+}
+
+// ------------------------------------------------------------------ compare (separate screen)
 const PAIRS = {
-  whoop_ours_vs_official: ["whoop:ours", "whoop:official", "Our WHOOP scores vs WHOOP's own"],
-  whoop_vs_oura: ["whoop:ours", "oura:official", "Our WHOOP scores vs Oura's official"],
-  official_whoop_vs_oura: ["whoop:official", "oura:official", "WHOOP official vs Oura official"],
-  oura_ours_vs_official: ["oura:ours", "oura:official", "Our Oura scores vs Oura's own"],
-  ours_whoop_vs_oura: ["whoop:ours", "oura:ours", "Our formulas: WHOOP vs Oura"],
+  whoop_ours_vs_official: ["whoop:ours", "whoop:official", "Our scores vs WHOOP's own"],
+  whoop_vs_oura: ["whoop:ours", "oura:official", "Our scores vs Oura"],
+  official_whoop_vs_oura: ["whoop:official", "oura:official", "WHOOP's own vs Oura"],
 };
 function viewCompare(root) {
-  if (!S.compare) { root.innerHTML = `<div class="panel"><div class="empty">Loading comparisons…</div></div>`; return; }
-  const [ak, bk, title] = PAIRS[S.pair];
+  const back = `<button class="btn" data-go="devices">‹ Devices</button>`;
+  if (!S.compare) { root.innerHTML = `${back}<div class="panel"><div class="empty">Loading comparisons…</div></div>`; return; }
+  if (!PAIRS[S.pair]) S.pair = "whoop_ours_vs_official";
+  const [ak, bk] = PAIRS[S.pair];
   const A = SERIES.find(s => s.key === ak), B = SERIES.find(s => s.key === bk);
   const res = S.compare[S.pair] || {};
-  const metricList = ["hrv", "rhr", "sleep_min", "recovery", "strain", "resp_rate", "bedtime", "waketime"];
-  const unit = { strain: (v, t) => fmt(v, 1), resp_rate: (v, t) => fmt(v, 1) + (t ? " rpm" : ""), hrv: (v, t) => fmt(v) + (t ? " ms" : ""), rhr: (v, t) => fmt(v) + (t ? " bpm" : ""), sleep_min: (v, t) => t ? hm(v) : (v / 60).toFixed(1) + "h", recovery: (v, t) => fmt(v) + (t ? "%" : ""), bedtime: v => clock(v), waketime: v => clock(v) };
+  const metricList = ["hrv", "rhr", "sleep_min", "recovery", "strain", "resp_rate", "bedtime", "waketime"].filter(k => !S.prefs.hideEmpty || (res[k] && res[k].n));
+  if (!metricList.includes(S.cmpMetric)) S.cmpMetric = metricList[0] || "hrv";
+  const unit = { strain: v => fmt(v, 1), resp_rate: (v, t) => fmt(v, 1) + (t ? " rpm" : ""), hrv: (v, t) => fmt(v) + (t ? " ms" : ""), rhr: (v, t) => fmt(v) + (t ? " bpm" : ""), sleep_min: (v, t) => t ? hm(v) : (v / 60).toFixed(1) + "h", recovery: (v, t) => fmt(v) + (t ? "%" : ""), bedtime: v => clock(v), waketime: v => clock(v) };
   const diffFmt = (k, v) => v == null ? "—" : k === "sleep_min" ? `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v))} min` : (k === "bedtime" || k === "waketime") ? `${v >= 0 ? "+" : "−"}${Math.round(Math.abs(v) / 60)} min` : `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}`;
   root.innerHTML = `
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${back}<span class="muted" style="font-size:13px">Reference only. Nothing here changes what the main screens show.</span></div>
     <div class="panel">
       <div class="panel-h"><h2>How closely do they agree?</h2>
         <select id="pairSel" aria-label="Comparison">${Object.entries(PAIRS).map(([k, v]) => `<option value="${k}" ${k === S.pair ? "selected" : ""}>${v[2]}</option>`).join("")}</select></div>
-      <div class="stats">${metricList.map(k => { const r = res[k] || { n: 0 };
-        const good = r.n && r.within_pct >= 80;
+      ${metricList.length ? `<div class="stats">${metricList.map(k => { const r = res[k] || { n: 0 }; const good = r.n && r.within_pct >= 80;
         return `<button class="stat" data-m="${k}" style="text-align:left;border:${k === S.cmpMetric ? "1.5px solid var(--ink-2)" : "1.5px solid transparent"};cursor:pointer">
           <div class="k">${METRICS[k].label}</div>
           <div class="v num">${r.n ? r.within_pct + "%" : "—"}</div>
           <div class="s">${r.n ? `within ${esc(r.tolerance.replace("±1800", "±30 min"))} · ${r.n} nights` : "no paired nights yet"}</div>
           <div class="s">${r.n ? `avg diff ${diffFmt(k, r.mean_diff)}${r.r != null ? " · r " + r.r : ""}` : ""}</div>
-          ${r.n ? `<div class="s" style="color:${good ? "var(--good)" : "var(--warn)"};font-weight:600">${good ? "● Close match" : "● Needs work"}</div>` : ""}</button>`; }).join("")}</div>
+          ${r.n ? `<div class="s" style="color:${good ? "var(--good)" : "var(--warn)"};font-weight:600">${good ? "● Close match" : "● Needs work"}</div>` : ""}</button>`; }).join("")}</div>` : `<div class="empty">No nights where both sources have data yet.</div>`}
     </div>
     <div class="grid2">
       <div class="panel"><div class="panel-h"><h2>${METRICS[S.cmpMetric].label}, night by night</h2></div><div id="scatter"></div></div>
       <div class="panel" id="ready"></div>
     </div>`;
-  const pairs = ((res[S.cmpMetric] || {}).pairs || []);
-  scatterSVG($("#scatter", root), pairs, A, B, unit[S.cmpMetric]);
+  scatterSVG($("#scatter", root), ((res[S.cmpMetric] || {}).pairs || []), A, B, unit[S.cmpMetric]);
   $("#pairSel", root).onchange = e => { S.pair = e.target.value; store.set("pair", S.pair); render(); };
   root.querySelectorAll("[data-m]").forEach(b => b.onclick = () => { S.cmpMetric = b.dataset.m; render(); });
-
-  const rd = $("#ready", root), R = S.readiness || {};
-  rd.innerHTML = `<div class="panel-h"><h2>Ready to cancel?</h2></div>` + ["whoop", "oura"].map(d => {
-    const r = R[d]; if (!r) return "";
-    const s = SERIES.find(x => x.device === d && x.source === "ours");
-    const pct = Math.min(100, Math.round(r.nights / r.target_nights * 100));
-    const names = { hrv: "HRV matches official", rhr: "Resting HR matches official", sleep_min: "Sleep time matches official", hrv_vs_oura: "HRV matches Oura" };
-    return `<div style="margin-bottom:16px">
-      <div class="panel-h" style="margin-bottom:6px"><b>${d === "whoop" ? "WHOOP membership" : "Oura membership"}</b>
-        <span class="tier"><i style="background:${r.ready ? "var(--good)" : r.blocked ? "var(--ink-3)" : "var(--warn)"}"></i>${r.ready ? "Ready" : r.blocked ? "Not possible yet" : "Not yet"}</span></div>
-      ${r.blocked ? `<p class="note" style="margin:0 0 8px">${esc(r.blocked)}</p>` : ""}
-      <div class="progress" role="progressbar" aria-valuenow="${r.nights}" aria-valuemax="${r.target_nights}"><div style="width:${pct}%"></div></div>
-      <div class="muted" style="font-size:12px;margin-top:4px">${r.nights >= r.target_nights ? `${r.nights} paired nights (target ${r.target_nights} reached)` : `${r.nights} of ${r.target_nights} paired nights`}</div>
-      <div class="checklist">${Object.entries(r.checks).map(([k, c]) => { const ok = c.n >= 30 && c.within_pct >= 80;
-        return `<div class="check"><span class="mark" style="background:${ok ? "var(--good)" : c.n ? "var(--warn)" : "var(--ink-3)"}">${ok ? "✓" : c.n ? "…" : "–"}</span>
-        <span><b>${names[k] || k}</b><br><span class="muted">${c.n ? `${c.within_pct}% of ${c.n} nights within ${esc(c.tolerance)} (target 80% over 30 nights)` : "Waiting for data from both sources"}</span></span></div>`; }).join("")}</div></div>`;
-  }).join("");
-}
-
-function viewDevices(root) {
-  const st = S.data.status || {};
-  const card = (d, label) => {
-    const s = st[d] || { bluetooth: {}, official: {} }; const bt = s.bluetooth || {}, of = s.official || {};
-    const fresh = bt.last_sample && Date.now() / 1000 - bt.last_sample < 600;
-    const lastSync = (of.recent || [])[0];
-    return `<div class="panel dev">
-      <div class="panel-h" style="margin:0"><h2>${label}</h2><span class="tier"><i style="background:${fresh ? "var(--good)" : "var(--ink-3)"}"></i>${fresh ? "In range" : "Not in range"}</span></div>
-      <div><div class="eyebrow" style="margin-bottom:6px">Our Bluetooth collection</div>
-        <dl class="kv"><dt>Last reading</dt><dd>${ago(bt.last_sample)}</dd><dt>Coverage, last 24 h</dt><dd class="num">${bt.minutes_last_24h ? hm(bt.minutes_last_24h) : "—"}</dd></dl></div>
-      <div><div class="eyebrow" style="margin-bottom:6px">Official API</div>
-        <dl class="kv"><dt>Status</dt><dd>${of.connected ? "Connected" : of.configured ? "Not connected" : "Not set up"}</dd>
-        <dt>Last sync</dt><dd>${lastSync ? `${ago(lastSync.at)}${lastSync.ok ? "" : " · failed"}` : "—"}</dd>
-        <dt>Our scores tuned on</dt><dd>${s.calibration && s.calibration.recovery ? `${s.calibration.recovery.n} nights · ±${s.calibration.recovery.mae} recovery pts` : "not yet (needs 14 nights)"}</dd></dl>
-        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
-          ${of.connected ? `<button class="btn" data-disconnect="${d}">Disconnect</button>` : `<a class="btn primary" style="display:inline-grid;place-items:center;text-decoration:none" href="/auth/${d}/start">Connect ${label}</a>`}
-        </div></div>
-      ${d === "whoop" ? `<p class="note" style="margin:0">MG decoding today: heart rate and R-R intervals work, so HRV, resting HR, sleep timing and strain are ours. SpO₂, skin temperature and breathing rate are not decoded yet and show “not yet”.</p>`
-        : `<p class="note" style="margin:0">“Oura · Ours” runs our formulas on heart rate and 5-minute HRV pulled from Oura's API, so it needs the membership for now. Direct Bluetooth support for Ring 4 will replace that once it's reliable.</p>`}
-    </div>`;
-  };
-  root.innerHTML = `<div class="grid2">${card("whoop", "WHOOP MG")}${card("oura", "Oura Ring 4")}</div>
-    <div class="panel"><div class="panel-h"><h2>Sync</h2><button class="btn" id="syncNow">Sync now</button></div>
-      <p class="muted" style="margin:0;font-size:13px">Official data syncs every 30 minutes and our scores recompute every 10. Travelling more than 14 days? Run the laptop collector to keep the strap's memory from filling.</p></div>`;
-  $("#syncNow", root).onclick = async e => { if (S.demo) { e.target.textContent = "Not available with sample data"; return; }
-    e.target.disabled = true; e.target.textContent = "Syncing…"; try { await fetch("/api/sync", { method: "POST" }); await load(); } finally { e.target.disabled = false; e.target.textContent = "Sync now"; } };
-  root.querySelectorAll("[data-disconnect]").forEach(b => b.onclick = async () => { if (S.demo) return; await fetch("/api/disconnect/" + b.dataset.disconnect, { method: "POST" }); await load(); });
-  if (S.demo) root.querySelectorAll('a[href^="/auth/"]').forEach(a => { a.removeAttribute("href"); a.setAttribute("aria-disabled", "true"); a.style.opacity = .6; });
+  const r = (S.readiness || {}).whoop, rd = $("#ready", root);
+  if (!r) { rd.innerHTML = `<div class="panel-h"><h2>Ready to cancel WHOOP?</h2></div><div class="empty">Not enough data yet.</div>`; return; }
+  const pct = Math.min(100, Math.round(r.nights / r.target_nights * 100));
+  const names = { hrv: "HRV matches WHOOP's", rhr: "Resting HR matches WHOOP's", sleep_min: "Sleep time matches WHOOP's", hrv_vs_oura: "HRV matches Oura" };
+  const cal = ((S.data.status || {}).whoop || {}).calibration;
+  rd.innerHTML = `<div class="panel-h"><h2>Ready to cancel WHOOP?</h2><span class="tier"><i style="background:${r.ready ? "var(--good)" : "var(--warn)"}"></i>${r.ready ? "Ready" : "Not yet"}</span></div>
+    <div class="progress" role="progressbar" aria-valuenow="${r.nights}" aria-valuemax="${r.target_nights}"><div style="width:${pct}%"></div></div>
+    <div class="muted" style="font-size:12px;margin-top:4px">${r.nights >= r.target_nights ? `${r.nights} paired nights (target ${r.target_nights} reached)` : `${r.nights} of ${r.target_nights} paired nights`}</div>
+    <div class="checklist">${Object.entries(r.checks).map(([k, c]) => { const ok = c.n >= 30 && c.within_pct >= 80;
+      return `<div class="check"><span class="mark" style="background:${ok ? "var(--good)" : c.n ? "var(--warn)" : "var(--ink-3)"}">${ok ? "✓" : c.n ? "…" : "–"}</span>
+      <span><b>${names[k] || k}</b><br><span class="muted">${c.n ? `${c.within_pct}% of ${c.n} nights within ${esc(c.tolerance)} (target 80% over 30 nights)` : "Waiting for data from both sources"}</span></span></div>`; }).join("")}</div>
+    <p class="note" style="margin:12px 0 0">${cal && cal.recovery ? `Our Recovery is tuned on ${cal.recovery.n} nights and lands within ±${cal.recovery.mae} points of WHOOP's on average.` : "Our Recovery tunes itself against WHOOP's after 14 paired nights."} Oura is used here only as an outside yardstick.</p>`;
 }
 
 // ------------------------------------------------------------------ shell
-const VIEWS = { today: viewToday, sleep: viewSleep, trends: viewTrends, compare: viewCompare, devices: viewDevices };
+const VIEWS = { today: viewToday, sleep: viewSleep, trends: viewTrends, devices: viewDevices, compare: viewCompare };
 function render() {
   if (!S.data) return;
-  document.querySelectorAll("[data-filter]").forEach(b => { const [, v] = b.dataset.filter.split(":"); b.setAttribute("aria-pressed", String(!!S.filters[v])); });
-  document.querySelectorAll("[data-tab]").forEach(t => t.toggleAttribute("aria-current", false) || (t.dataset.tab === S.view && t.setAttribute("aria-current", "page")));
+  const tab = S.view === "compare" ? "devices" : S.view;
+  document.querySelectorAll("[data-tab]").forEach(t => { if (t.dataset.tab === tab) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current"); });
   document.querySelectorAll("[data-view]").forEach(v => v.hidden = v.dataset.view !== S.view);
   VIEWS[S.view](document.getElementById("view-" + S.view));
 }
-document.querySelectorAll("[data-filter]").forEach(b => b.onclick = () => {
-  const [, v] = b.dataset.filter.split(":"); S.filters[v] = !S.filters[v]; store.set("filters", S.filters); render();
-});
-document.querySelectorAll("[data-tab]").forEach(t => t.onclick = () => { S.view = t.dataset.tab; try { history.replaceState(null, "", "#" + S.view); } catch {} window.scrollTo(0, 0); render(); });
+document.addEventListener("click", e => { const b = e.target.closest("[data-go]"); if (b) go(b.dataset.go); });
+document.querySelectorAll("[data-tab]").forEach(t => t.onclick = () => go(t.dataset.tab));
 const h = (location.hash || "").slice(1).split("?")[0];
 if (VIEWS[h]) S.view = h;
+window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS[v] && v !== S.view) { S.view = v; render(); } });
 if (S.demo) document.getElementById("demoBadge").hidden = false;
 let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 200); });
 load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Vitals server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
