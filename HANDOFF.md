@@ -8,8 +8,8 @@ was written on 2026-11-10. Owner: Balaji (GitHub `sbalajiiyer`), Troy, Michigan,
 - Name: the project is branded **Loop** (renamed from "Vitals Lab" on 2026-11-11). The Python package is `loop`,
   settings are `LOOP_*`, the services are `loop-server` and `loop-collector`, the database is `data/loop.sqlite`,
   and the Pi's hostname is `loop`.
-- Code: a Git repository named `loop` (delivered as `loop.zip`, history included). The GitHub repo
-  `sbalajiiyer/loop` (private) is the intended home; it had not been created yet when this was written.
+- Code: a Git repository named `loop`. It is pushed to the private GitHub repo
+  `sbalajiiyer/loop` (branch `main`), which is now the source of truth.
   Every file is also reproduced in full in Part 7 of this document.
 - Live preview (sample data, no real data): https://claude.ai/artifact/PKFXL5e8Gt86P4P4UpWzRm
   (a single HTML file built by `loop/tools/build_demo.py`).
