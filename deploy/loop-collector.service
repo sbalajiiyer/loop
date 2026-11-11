@@ -1,12 +1,12 @@
 [Unit]
-Description=Vitals WHOOP Bluetooth collector
+Description=Loop WHOOP Bluetooth collector
 After=bluetooth.target
 Requires=bluetooth.target
 
 [Service]
 User=pi
-WorkingDirectory=/home/pi/vitals
-ExecStart=/home/pi/vitals/.venv/bin/python -m vitals.ble.whoop_mg run
+WorkingDirectory=/home/pi/loop
+ExecStart=/home/pi/loop/.venv/bin/python -m loop.ble.whoop_mg run
 Restart=always
 RestartSec=10
 MemoryMax=120M

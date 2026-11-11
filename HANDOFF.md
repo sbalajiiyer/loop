@@ -1,15 +1,18 @@
-# Vitals Lab: project handoff
+# Loop: project handoff
 
 Self-hosted WHOOP MG + Oura Ring 4 dashboard. Work was done on 2026-10-23; this handoff
 was written on 2026-11-10. Owner: Balaji (GitHub `sbalajiiyer`), Troy, Michigan, timezone
 `America/Detroit`.
 
 **Where things are**
-- Code: the `vitals-lab.zip` file from the original chat (43 files, ~187 KB). Every file is
-  also reproduced in full in Part 7 of this document, so the project can be rebuilt from
-  here alone. It is **not** in a Git repository yet.
+- Name: the project is branded **Loop** (renamed from "Vitals Lab" on 2026-11-11). The Python package is `loop`,
+  settings are `LOOP_*`, the services are `loop-server` and `loop-collector`, the database is `data/loop.sqlite`,
+  and the Pi's hostname is `loop`.
+- Code: a Git repository named `loop` (delivered as `loop.zip`, history included). The GitHub repo
+  `sbalajiiyer/loop` (private) is the intended home; it had not been created yet when this was written.
+  Every file is also reproduced in full in Part 7 of this document.
 - Live preview (sample data, no real data): https://claude.ai/artifact/PKFXL5e8Gt86P4P4UpWzRm
-  (a single HTML file built by `vitals/tools/build_demo.py`; the version on that link is version 3).
+  (a single HTML file built by `loop/tools/build_demo.py`).
 - Project name in Claude: "Whoop Oura Dash".
 
 ---
@@ -30,16 +33,16 @@ per metric, from our own scores. Comparisons moved to a separate Compare screen.
   - *Compare* (from Devices; hash `#compare`): three pairs only (ours vs WHOOP official, ours vs Oura official,
     WHOOP official vs Oura official) and "Ready to cancel WHOOP?". "Oura · Ours" is no longer shown anywhere in the UI
     (the server still computes it).
-- `vitals/analytics.py`: `detect_workouts`, `log_workout`, `delete_workout`, `recompute_day`; `strain_score` now adds
+- `loop/analytics.py`: `detect_workouts`, `log_workout`, `delete_workout`, `recompute_day`; `strain_score` now adds
   logged-workout minutes the strap didn't hear at a typical effort (`LOGGED_EFFORT`) and records `extra.strain_estimated_min`.
-- `vitals/db.py`: `workouts.zones` column (JSON, minutes in zones 1-5) with an automatic migration; `workouts.source` is
+- `loop/db.py`: `workouts.zones` column (JSON, minutes in zones 1-5) with an automatic migration; `workouts.source` is
   `official`, `detected` or `logged`.
-- `vitals/server.py`: `POST /api/workouts`, `DELETE /api/workouts/{id}`; overview workouts carry `zones` and local `day`.
-- `vitals/mcp_server.py`: `workouts` tool. `vitals/tools/seed_demo.py`: seeds logged strength sessions.
+- `loop/server.py`: `POST /api/workouts`, `DELETE /api/workouts/{id}`; overview workouts carry `zones` and local `day`.
+- `loop/mcp_server.py`: `workouts` tool. `loop/tools/seed_demo.py`: seeds logged strength sessions.
 - `tests/test_workouts.py`: detection, logging, strain accounting, removal.
 
 **Review findings not yet acted on** (from the 2026-11-10 review)
-1. Nothing has touched the real strap. Run `python -m vitals.ble.whoop_mg run --no-history` on the laptop first and confirm
+1. Nothing has touched the real strap. Run `python -m loop.ble.whoop_mg run --no-history` on the laptop first and confirm
    that 0x2A37 delivers R-R intervals on the MG. Everything "ours" depends on it.
 2. During the trial the collector should be read-only (no history ack, command 23), or the WHOOP app loses the data it
    needs to produce the official scores we compare against. Not implemented.
@@ -50,7 +53,7 @@ per metric, from our own scores. Comparisons moved to a separate Compare screen.
 6. Ideas not built: strap battery on Devices, collector-down alert, strain target, sleep consistency, normal-range bands, weekly summary.
 
 **Where things are now**
-- Code: `vitals-lab.zip` sent in the 2026-11-10 chat; every file is reproduced below. Still not in a Git host.
+- Code: `loop.zip` sent in the 2026-11-10 chat; every file is reproduced below. Still not in a Git host.
 - Preview (sample data): https://claude.ai/artifact/PKFXL5e8Gt86P4P4UpWzRm
 
 ---
@@ -89,25 +92,25 @@ subscriptions.
 
 ```
  WHOOP MG strap ──Bluetooth LE──▶ Pi Zero 2 W (bedroom, new)                  ┌──────────────┐
-                                  vitals-collector.service (Python + bleak)   │              │
+                                  loop-collector.service (Python + bleak)     │              │
                                   writes straight to SQLite ─────────────────▶│  SQLite file │
  (travel >14 days)                                                            │  data/       │
- WHOOP MG ──Bluetooth──▶ Laptop collector (same Python code, --upload URL)    │  vitals.     │
+ WHOOP MG ──Bluetooth──▶ Laptop collector (same Python code, --upload URL)    │  loop.       │
                          POST /api/ingest over Tailscale (bearer token);      │  sqlite      │
-                         spools to ~/.vitals-spool/*.json if Pi unreachable ─▶│  (WAL mode)  │
+                         spools to ~/.loop-spool/*.json if Pi unreachable ───▶│  (WAL mode)  │
                                                                               │              │
  WHOOP API v2 (wife's account, temporary baseline) ─┐ polled every 30 min     │              │
- Oura API v2 (my membership)                       ─┴─ by vitals-server ─────▶│              │
+ Oura API v2 (my membership)                       ─┴─ by loop-server ───────▶│              │
                                                                               └──────┬───────┘
- vitals-server.service (FastAPI + uvicorn, 127.0.0.1:8800, on the Pi)                │
+ loop-server.service (FastAPI + uvicorn, 127.0.0.1:8800, on the Pi)                │
    background loop: API sync 30 min · history decode + recompute our scores 10 min · │
    push alerts/brief (ntfy, optional) 10 min · auto-tune vs official 24 h ◀───────────┘
    serves web/app.html (dashboard) + JSON API
         │
-        ▼  `tailscale serve --bg 8800` → https://vitals.<tailnet>.ts.net (private, HTTPS)
+        ▼  `tailscale serve --bg 8800` → https://loop.<tailnet>.ts.net (private, HTTPS)
  iPhone (Safari, Add to Home Screen) · laptop browser · Claude desktop app (mcp_server.py, stdio)
 
- Nightly 03:15: deploy/backup.sh → data/backups/vitals-YYYY-MM-DD.sqlite.gz (keep 14)
+ Nightly 03:15: deploy/backup.sh → data/backups/loop-YYYY-MM-DD.sqlite.gz (keep 14)
                 → optional rclone remote "offsite" (Google Drive or Backblaze B2 free 10 GB)
 ```
 
@@ -115,19 +118,19 @@ subscriptions.
 
 | Component | File(s) | What it does |
 |---|---|---|
-| WHOOP MG collector | `vitals/ble/whoop_mg.py`, `frames.py`, `protocol.py`, `sinks.py` | Connects over BLE, sends CLIENT_HELLO, subscribes to standard HR (0x2A37) for beat-level HR + R-R, subscribes to custom channels fd4b0003/4/5/7 and stores every raw notification, requests stored history every 30 min, acks only after data is written. Flushes every 15 s; reconnects every 20 s if the strap is out of range. |
-| History decoder | `vitals/ble/history.py` | Works out the stored-history record layout by matching records against live HR. Saves `data/history_layout.json`, then decodes history automatically (never overwrites live readings). |
-| Storage | `vitals/db.py` | SQLite (WAL). Tables: `hr_samples`, `hrv_samples`, `raw_frames`, `daily`, `workouts`, `journal`, `kv`, `sync_log`. |
-| Official API sync | `vitals/sources/oauth.py`, `whoop_api.py`, `oura_api.py` | OAuth 2.0 authorization code flow, tokens stored in `kv`, auto refresh, 429 back-off. |
-| Our scores | `vitals/analytics.py` | Sleep detection, RHR, HRV, breathing rate, stage estimate, Recovery, Strain, auto-tuning, agreement and cancel-readiness stats. |
-| Insights | `vitals/insights.py` | Journal patterns, alerts, morning brief, ntfy push. |
-| Backend | `vitals/server.py` | FastAPI app, background loop, JSON API, ingest endpoint, OAuth routes. |
+| WHOOP MG collector | `loop/ble/whoop_mg.py`, `frames.py`, `protocol.py`, `sinks.py` | Connects over BLE, sends CLIENT_HELLO, subscribes to standard HR (0x2A37) for beat-level HR + R-R, subscribes to custom channels fd4b0003/4/5/7 and stores every raw notification, requests stored history every 30 min, acks only after data is written. Flushes every 15 s; reconnects every 20 s if the strap is out of range. |
+| History decoder | `loop/ble/history.py` | Works out the stored-history record layout by matching records against live HR. Saves `data/history_layout.json`, then decodes history automatically (never overwrites live readings). |
+| Storage | `loop/db.py` | SQLite (WAL). Tables: `hr_samples`, `hrv_samples`, `raw_frames`, `daily`, `workouts`, `journal`, `kv`, `sync_log`. |
+| Official API sync | `loop/sources/oauth.py`, `whoop_api.py`, `oura_api.py` | OAuth 2.0 authorization code flow, tokens stored in `kv`, auto refresh, 429 back-off. |
+| Our scores | `loop/analytics.py` | Sleep detection, RHR, HRV, breathing rate, stage estimate, Recovery, Strain, auto-tuning, agreement and cancel-readiness stats. |
+| Insights | `loop/insights.py` | Journal patterns, alerts, morning brief, ntfy push. |
+| Backend | `loop/server.py` | FastAPI app, background loop, JSON API, ingest endpoint, OAuth routes. |
 | Front end | `web/app.html` (+ `manifest.webmanifest`, `icon.svg`) | Single-file dashboard, no build step, five tabs. |
-| Claude connector | `vitals/mcp_server.py` | Hand-written JSON-RPC MCP server over stdio, no dependencies, reads the Pi's API. |
-| Hosting | `deploy/vitals-server.service`, `deploy/vitals-collector.service` | systemd units on the Pi, user `pi`, path `/home/pi/vitals`, venv `.venv`. Memory caps: server 200M, collector 120M. |
+| Claude connector | `loop/mcp_server.py` | Hand-written JSON-RPC MCP server over stdio, no dependencies, reads the Pi's API. |
+| Hosting | `deploy/loop-server.service`, `deploy/loop-collector.service` | systemd units on the Pi, user `pi`, path `/home/pi/loop`, venv `.venv`. Memory caps: server 200M, collector 120M. |
 | Remote access | Tailscale | `tailscale serve --bg 8800`. Nothing is exposed to the public internet. |
 | Backup | `deploy/backup.sh` | Consistent SQLite snapshot via the backup API, gzip, keep 14, optional rclone. |
-| Demo tooling | `vitals/tools/seed_demo.py`, `build_demo.py` | 60 days of synthetic data; bundles a self-contained preview HTML. |
+| Demo tooling | `loop/tools/seed_demo.py`, `build_demo.py` | 60 days of synthetic data; bundles a self-contained preview HTML. |
 
 **Data flow detail**
 - Live BLE readings: `hr_samples(device='whoop', ts, bpm, rr_ms JSON, motion)` at 1 row per second while in range.
@@ -199,7 +202,7 @@ Payload for commands: `[packet_type=35][sequence][command][data…]`.
 - Scopes: `offline read:recovery read:cycles read:workout read:sleep read:profile read:body_measurement` (the refresh request also sends `scope=offline`)
 - Base: `https://api.prod.whoop.com/developer`
 - Endpoints: `/v2/activity/sleep`, `/v2/recovery`, `/v2/cycle`, `/v2/activity/workout`; params `limit=25`, `start=<ISO>`, `nextToken`; response `records` + `next_token`
-- Redirect URI: `{VITALS_BASE_URL}/auth/whoop/callback`
+- Redirect URI: `{LOOP_BASE_URL}/auth/whoop/callback`
 - Sync: every 30 min (and on "Sync now"); window = max(`WHOOP_IMPORT_FROM`, last cursor − 3 days)
 - Day assignment: sleep → local date of sleep end; recovery → via `sleep_id`; cycle → local date of (cycle start + 6 h)
 - Metrics: recovery_score, resting_heart_rate, hrv_rmssd_milli, spo2_percentage, skin_temp_celsius, user_calibrating; sleep stage times (light, slow-wave = deep, REM, awake, in bed), sleep performance %, efficiency %, respiratory rate, consistency, disturbances; cycle strain, kilojoule → kcal (÷4.184), step_count; workouts (sport, strain, avg/max HR, kcal)
@@ -210,7 +213,7 @@ Payload for commands: `[packet_type=35][sequence][command][data…]`.
 - Scopes: `email personal daily heartrate workout session spo2Daily`
 - Base: `https://api.ouraring.com/v2/usercollection`
 - Endpoints: `daily_readiness`, `sleep`, `daily_sleep`, `daily_activity`, `daily_spo2` (params `start_date`, `end_date`, `next_token`), and `heartrate` (params `start_datetime`, `end_datetime`)
-- Redirect URI: `{VITALS_BASE_URL}/auth/oura/callback`
+- Redirect URI: `{LOOP_BASE_URL}/auth/oura/callback`
 - Sync: every 30 min; window = max(`OURA_IMPORT_FROM`=2026-01-01, last cursor − 3 days) to tomorrow
 - Metrics: readiness score → `recovery`, temperature_deviation → `skin_temp`; long_sleep: total/deep/REM/light/awake durations, time in bed, efficiency, average_hrv, lowest_heart_rate → `rhr`, average_breath → `resp_rate`, bedtime start/end; sleep score; activity score, steps, total calories; SpO₂ average
 - For Oura · Ours: heart-rate samples (about 1 per 5 minutes during the day, plus the sleep `heart_rate` 5-min series) and the sleep `hrv` 5-min RMSSD series. **No beat-to-beat data exists in Oura's API.**
@@ -306,25 +309,25 @@ pip install pytest                       # tests only
 python -m pytest -q tests                # 11 tests
 
 # demo with sample data
-VITALS_DB=data/demo.sqlite python -m vitals.tools.seed_demo
-VITALS_DB=data/demo.sqlite uvicorn vitals.server:app --port 8800      # http://localhost:8800
-VITALS_DB=data/demo.sqlite python -m vitals.tools.build_demo vitals-preview.html
+LOOP_DB=data/demo.sqlite python -m loop.tools.seed_demo
+LOOP_DB=data/demo.sqlite uvicorn loop.server:app --port 8800      # http://localhost:8800
+LOOP_DB=data/demo.sqlite python -m loop.tools.build_demo loop-preview.html
 
 # real server
 cp .env.example .env                     # fill in
-uvicorn vitals.server:app --host 127.0.0.1 --port 8800
+uvicorn loop.server:app --host 127.0.0.1 --port 8800
 
 # strap
-python -m vitals.ble.whoop_mg scan --seconds 20
-python -m vitals.ble.whoop_mg run                       # Pi: stores locally
-python -m vitals.ble.whoop_mg run --no-history          # live HR only (safest first test)
-python -m vitals.ble.whoop_mg run --upload https://vitals.<tailnet>.ts.net   # laptop
-LOGLEVEL=DEBUG python -m vitals.ble.whoop_mg run
+python -m loop.ble.whoop_mg scan --seconds 20
+python -m loop.ble.whoop_mg run                       # Pi: stores locally
+python -m loop.ble.whoop_mg run --no-history          # live HR only (safest first test)
+python -m loop.ble.whoop_mg run --upload https://loop.<tailnet>.ts.net   # laptop
+LOGLEVEL=DEBUG python -m loop.ble.whoop_mg run
 
 # history decoding (after a few days of real data)
-python -m vitals.ble.history probe
-python -m vitals.ble.history probe --save
-python -m vitals.ble.history redecode
+python -m loop.ble.history probe
+python -m loop.ble.history probe --save
+python -m loop.ble.history redecode
 
 # Pi
 sudo apt update && sudo apt install -y python3-venv bluez git
@@ -332,9 +335,9 @@ sudo usermod -aG bluetooth pi
 curl -fsSL https://tailscale.com/install.sh | sh && sudo tailscale up
 sudo tailscale serve --bg 8800 && tailscale serve status
 sudo cp deploy/*.service /etc/systemd/system/
-sudo systemctl enable --now vitals-server vitals-collector
-journalctl -u vitals-collector -f
-chmod +x deploy/backup.sh   # crontab: 15 3 * * * /home/pi/vitals/deploy/backup.sh
+sudo systemctl enable --now loop-server loop-collector
+journalctl -u loop-collector -f
+chmod +x deploy/backup.sh   # crontab: 15 3 * * * /home/pi/loop/deploy/backup.sh
 
 # ingest token
 python3 -c "import secrets; print(secrets.token_urlsafe(32))"
@@ -357,7 +360,7 @@ python3 -c "import secrets; print(secrets.token_urlsafe(32))"
 | GET | `/api/patterns` | Tag effects |
 | GET | `/api/alerts` | Current alerts |
 | GET | `/api/summary?day=` | Morning brief |
-| POST | `/api/ingest` | Laptop upload, header `Authorization: Bearer <VITALS_INGEST_TOKEN>` |
+| POST | `/api/ingest` | Laptop upload, header `Authorization: Bearer <LOOP_INGEST_TOKEN>` |
 | GET | `/auth/{whoop\|oura}/start`, `/auth/{…}/callback` | OAuth |
 | POST | `/api/disconnect/{name}` | Remove a token |
 
@@ -369,7 +372,7 @@ loop tick 30 s.
 - Sleep threshold = p10 + 0.4·(p80 − p10) of the 7-min rolling-median HR.
 - Default Recovery = logistic of 0.65·z_hrv − 0.35·z_rhr + 2.0·(sleep_ratio − 0.9), against a 30-night baseline; "calibrating" for the first 7 nights.
 - Strain = 21·(1 − e^(−TRIMP/k)), default k = 122.
-- Max HR: `VITALS_MAX_HR`, else 208 − 0.7·age (Tanaka).
+- Max HR: `LOOP_MAX_HR`, else 208 − 0.7·age (Tanaka).
 - Tuning: ridge regression with λ = 3, blended in by min(1, n/30).
 
 ---
@@ -391,13 +394,13 @@ loop tick 30 s.
 | Placement | New Pi in the **bedroom** (Bluetooth range about 10 m, reduced by walls). |
 
 **Accounts to set up**
-1. **WHOOP developer app**: developer-dashboard.whoop.com, signed in as the wife's account. Redirect URIs: `http://localhost:8800/auth/whoop/callback` (laptop mode) and `https://vitals.<tailnet>.ts.net/auth/whoop/callback` (Pi). Copy the client ID/secret into `.env`. She approves on the Connect screen.
+1. **WHOOP developer app**: developer-dashboard.whoop.com, signed in as the wife's account. Redirect URIs: `http://localhost:8800/auth/whoop/callback` (laptop mode) and `https://loop.<tailnet>.ts.net/auth/whoop/callback` (Pi). Copy the client ID/secret into `.env`. She approves on the Connect screen.
 2. **WHOOP profile**: wife updates the account's height, weight and age to mine (her call).
 3. **Oura developer app**: cloud.ouraring.com/oauth/applications (my account), with the same two redirect URIs but `/auth/oura/callback`.
-4. **Tailscale**: free personal plan. Install on the Pi, laptop and iPhone with the same account. Pi hostname `vitals`.
+4. **Tailscale**: free personal plan. Install on the Pi, laptop and iPhone with the same account. Pi hostname `loop`.
 5. **ntfy** (optional): the app plus a long random topic → `NTFY_URL=https://ntfy.sh/<topic>`.
 6. **rclone** (optional): remote named `offsite` (Google Drive or Backblaze B2).
-7. **Claude desktop app**: add the `vitals` MCP server config (README).
+7. **Claude desktop app**: add the `loop` MCP server config (README).
 
 **Costs:** hardware ≈ $35 one-time; $0/month. WHOOP and Oura memberships continue until each passes the readiness test.
 
@@ -419,7 +422,7 @@ loop tick 30 s.
 11. **Open-source scores are approximations**, not WHOOP's or Oura's algorithms.
 
 **Open questions**
-- My age, max HR and sleep need. `.env` defaults are `VITALS_AGE=45` (placeholder, not my real age), `VITALS_MAX_HR=0` (estimate), `VITALS_SLEEP_NEED_HOURS=8`.
+- My age, max HR and sleep need. `.env` defaults are `LOOP_AGE=45` (placeholder, not my real age), `LOOP_MAX_HR=0` (estimate), `LOOP_SLEEP_NEED_HOURS=8`.
 - The exact first day I wore the strap. `WHOOP_IMPORT_FROM` defaults to 2026-10-23.
 - When the wife's WHOOP membership ends.
 - Has the new Pi Zero 2 W been bought?
@@ -431,18 +434,18 @@ loop tick 30 s.
 
 ## 10. Next steps, in order
 
-1. **Save the code somewhere durable:** create a private GitHub repo (e.g. `sbalajiiyer/vitals-lab`) from `vitals-lab.zip` or from Part 7 of this document. Don't commit `.env` or `data/`.
+1. **Save the code somewhere durable:** create a private GitHub repo (e.g. `sbalajiiyer/loop`) from `loop.zip` or from Part 7 of this document. Don't commit `.env` or `data/`.
 2. **Laptop mode (starts the 30-night clock):**
    - Create the Oura developer app and the WHOOP developer app (wife signs in), with the localhost redirect URIs.
-   - `cp .env.example .env`, then set `VITALS_BASE_URL=http://localhost:8800`, the client IDs/secrets, `WHOOP_IMPORT_FROM` = first day worn, and my age and sleep need.
-   - `uvicorn vitals.server:app --port 8800`, open Devices → Connect Oura, then Connect WHOOP (wife approves).
+   - `cp .env.example .env`, then set `LOOP_BASE_URL=http://localhost:8800`, the client IDs/secrets, `WHOOP_IMPORT_FROM` = first day worn, and my age and sleep need.
+   - `uvicorn loop.server:app --port 8800`, open Devices → Connect Oura, then Connect WHOOP (wife approves).
    - Wife updates the WHOOP profile to my height, weight and age.
    - Run the server daily; each sync catches up 3 days.
-3. **First strap test on the laptop:** close the WHOOP phone app, run `python -m vitals.ble.whoop_mg scan`, set `WHOOP_ADDRESS`, then `run --no-history`. Confirm live HR appears on Today. Then try history with `LOGLEVEL=DEBUG` and check the logs.
+3. **First strap test on the laptop:** close the WHOOP phone app, run `python -m loop.ble.whoop_mg scan`, set `WHOOP_ADDRESS`, then `run --no-history`. Confirm live HR appears on Today. Then try history with `LOGLEVEL=DEBUG` and check the logs.
 4. **Buy the Pi kit** (≈ $35) if not already done.
-5. **Set up the Pi** (README "Set up the Pi"): flash Raspberry Pi OS Lite 64-bit with hostname `vitals`, install packages, Tailscale, `tailscale serve --bg 8800`, pair the strap, systemd services, backup cron, then Add to Home Screen on the iPhone.
-6. **Move from laptop to Pi:** copy `data/vitals.sqlite` and `.env`, change `VITALS_BASE_URL` to the Tailscale address, and add the Tailscale redirect URIs in both developer dashboards. Generate `VITALS_INGEST_TOKEN` and set it on the Pi and the laptop.
-7. **After a few days of real data:** `python -m vitals.ble.history probe`, then `--save` when it reports a strong match, then `redecode`.
+5. **Set up the Pi** (README "Set up the Pi"): flash Raspberry Pi OS Lite 64-bit with hostname `loop`, install packages, Tailscale, `tailscale serve --bg 8800`, pair the strap, systemd services, backup cron, then Add to Home Screen on the iPhone.
+6. **Move from laptop to Pi:** copy `data/loop.sqlite` and `.env`, change `LOOP_BASE_URL` to the Tailscale address, and add the Tailscale redirect URIs in both developer dashboards. Generate `LOOP_INGEST_TOKEN` and set it on the Pi and the laptop.
+7. **After a few days of real data:** `python -m loop.ble.history probe`, then `--save` when it reports a strong match, then `redecode`.
 8. **Optional:** ntfy notifications, rclone offsite backup, Claude desktop connector.
 9. **After 14 nights:** check auto-tuning on Devices ("tuned on N nights"). After 30 nights, check Compare → "Ready to cancel?".
 10. **When WHOOP shows Ready:** export WHOOP history from the app, then the wife cancels. Oura stays until Ring 4 Bluetooth is possible.
@@ -455,22 +458,22 @@ loop tick 30 s.
 Project layout:
 
 ```
-vitals/
+loop/
   .env.example
   README.md
   requirements.txt
   deploy/backup.sh
-  deploy/vitals-collector.service
-  deploy/vitals-server.service
+  deploy/loop-collector.service
+  deploy/loop-server.service
   tests/conftest.py  test_analytics.py  test_frames.py  test_history.py  test_insights.py  test_sources.py  test_workouts.py
-  vitals/__init__.py  config.py  db.py  analytics.py  insights.py  server.py  mcp_server.py
-  vitals/ble/__init__.py  frames.py  protocol.py  whoop_mg.py  sinks.py  history.py
-  vitals/sources/__init__.py  oauth.py  whoop_api.py  oura_api.py
-  vitals/tools/__init__.py  seed_demo.py  build_demo.py
+  loop/__init__.py  config.py  db.py  analytics.py  insights.py  server.py  mcp_server.py
+  loop/ble/__init__.py  frames.py  protocol.py  whoop_mg.py  sinks.py  history.py
+  loop/sources/__init__.py  oauth.py  whoop_api.py  oura_api.py
+  loop/tools/__init__.py  seed_demo.py  build_demo.py
   web/app.html  manifest.webmanifest  icon.svg
 ```
 
-The SQLite schema is the `SCHEMA` string in `vitals/db.py`. The settings file template is
+The SQLite schema is the `SCHEMA` string in `loop/db.py`. The settings file template is
 `.env.example`.
 
 ## `.env.example`
@@ -479,30 +482,30 @@ The SQLite schema is the `SCHEMA` string in `vitals/db.py`. The settings file te
 # Copy to .env and fill in. Never commit .env.
 
 # Your Pi's Tailscale HTTPS address (shown by `tailscale serve status`)
-VITALS_BASE_URL=https://vitals.your-tailnet.ts.net
-VITALS_TZ=America/Detroit
+LOOP_BASE_URL=https://loop.your-tailnet.ts.net
+LOOP_TZ=America/Detroit
 
 # Long random string; the laptop collector uses it to upload to the Pi.
 # Generate with:  python3 -c "import secrets; print(secrets.token_urlsafe(32))"
-VITALS_INGEST_TOKEN=
+LOOP_INGEST_TOKEN=
 
 # Used by our own strain and sleep scores
-VITALS_AGE=45
-VITALS_MAX_HR=0
-VITALS_SLEEP_NEED_HOURS=8
+LOOP_AGE=45
+LOOP_MAX_HR=0
+LOOP_SLEEP_NEED_HOURS=8
 
-# WHOOP strap Bluetooth address (from: python -m vitals.ble.whoop_mg scan)
+# WHOOP strap Bluetooth address (from: python -m loop.ble.whoop_mg scan)
 WHOOP_ADDRESS=
 
 # WHOOP official API (developer-dashboard.whoop.com). Redirect URL to register:
-#   https://vitals.your-tailnet.ts.net/auth/whoop/callback
+#   https://loop.your-tailnet.ts.net/auth/whoop/callback
 WHOOP_CLIENT_ID=
 WHOOP_CLIENT_SECRET=
 # First day you wore the strap; earlier data on the account is not imported.
 WHOOP_IMPORT_FROM=2026-10-23
 
 # Oura official API (cloud.ouraring.com/oauth/applications). Redirect URL to register:
-#   https://vitals.your-tailnet.ts.net/auth/oura/callback
+#   https://loop.your-tailnet.ts.net/auth/oura/callback
 OURA_CLIENT_ID=
 OURA_CLIENT_SECRET=
 OURA_IMPORT_FROM=2026-01-01
@@ -522,18 +525,18 @@ httpx>=0.27
 bleak>=0.22
 ```
 
-## `deploy/vitals-server.service`
+## `deploy/loop-server.service`
 
 ```ini
 [Unit]
-Description=Vitals dashboard server
+Description=Loop dashboard server
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 User=pi
-WorkingDirectory=/home/pi/vitals
-ExecStart=/home/pi/vitals/.venv/bin/uvicorn vitals.server:app --host 127.0.0.1 --port 8800 --workers 1
+WorkingDirectory=/home/pi/loop
+ExecStart=/home/pi/loop/.venv/bin/uvicorn loop.server:app --host 127.0.0.1 --port 8800 --workers 1
 Restart=always
 RestartSec=5
 MemoryMax=200M
@@ -542,18 +545,18 @@ MemoryMax=200M
 WantedBy=multi-user.target
 ```
 
-## `deploy/vitals-collector.service`
+## `deploy/loop-collector.service`
 
 ```ini
 [Unit]
-Description=Vitals WHOOP Bluetooth collector
+Description=Loop WHOOP Bluetooth collector
 After=bluetooth.target
 Requires=bluetooth.target
 
 [Service]
 User=pi
-WorkingDirectory=/home/pi/vitals
-ExecStart=/home/pi/vitals/.venv/bin/python -m vitals.ble.whoop_mg run
+WorkingDirectory=/home/pi/loop
+ExecStart=/home/pi/loop/.venv/bin/python -m loop.ble.whoop_mg run
 Restart=always
 RestartSec=10
 MemoryMax=120M
@@ -567,14 +570,14 @@ WantedBy=multi-user.target
 ```bash
 #!/usr/bin/env bash
 # Nightly backup: consistent SQLite snapshot, keep 14 locally, copy offsite if rclone is set up.
-# Cron (crontab -e):  15 3 * * * /home/pi/vitals/deploy/backup.sh
+# Cron (crontab -e):  15 3 * * * /home/pi/loop/deploy/backup.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
 mkdir -p data/backups
-snap="data/backups/vitals-$(date +%F).sqlite"
+snap="data/backups/loop-$(date +%F).sqlite"
 python3 - "$snap" <<'EOF'
 import sqlite3, sys
-src = sqlite3.connect("data/vitals.sqlite")
+src = sqlite3.connect("data/loop.sqlite")
 dst = sqlite3.connect(sys.argv[1])
 src.backup(dst)
 dst.close(); src.close()
@@ -583,17 +586,17 @@ gzip -f "$snap"
 ls -1t data/backups/*.gz | tail -n +15 | xargs -r rm --
 # Offsite: run `rclone config` once and name the remote "offsite" (Google Drive or Backblaze B2).
 if command -v rclone >/dev/null && rclone listremotes | grep -q '^offsite:'; then
-  rclone copy data/backups offsite:vitals-backups --max-age 48h
+  rclone copy data/backups offsite:loop-backups --max-age 48h
 fi
 ```
 
-## `vitals/__init__.py`
+## `loop/__init__.py`
 
 ```python
-"""Vitals: a self-hosted dashboard for WHOOP and Oura data."""
+"""Loop: a self-hosted dashboard for WHOOP and Oura data."""
 ```
 
-## `vitals/config.py`
+## `loop/config.py`
 
 ```python
 """Settings, read from environment variables or a .env file next to the project."""
@@ -624,17 +627,17 @@ def get(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
 
-DB_PATH = Path(get("VITALS_DB", str(ROOT / "data" / "vitals.sqlite")))
+DB_PATH = Path(get("LOOP_DB", str(ROOT / "data" / "loop.sqlite")))
 # Public base URL of the dashboard (your Tailscale HTTPS name), used for OAuth redirects.
-BASE_URL = get("VITALS_BASE_URL", "http://localhost:8800").rstrip("/")
+BASE_URL = get("LOOP_BASE_URL", "http://localhost:8800").rstrip("/")
 # Shared secret the laptop collector uses when uploading to the Pi.
-INGEST_TOKEN = get("VITALS_INGEST_TOKEN", "")
-TIMEZONE = get("VITALS_TZ", "America/Detroit")
+INGEST_TOKEN = get("LOOP_INGEST_TOKEN", "")
+TIMEZONE = get("LOOP_TZ", "America/Detroit")
 
 # Personal profile used by our own scores.
-MAX_HR = int(get("VITALS_MAX_HR", "0") or 0)        # 0 = estimate from age
-AGE = int(get("VITALS_AGE", "45") or 45)
-SLEEP_NEED_HOURS = float(get("VITALS_SLEEP_NEED_HOURS", "8") or 8)
+MAX_HR = int(get("LOOP_MAX_HR", "0") or 0)        # 0 = estimate from age
+AGE = int(get("LOOP_AGE", "45") or 45)
+SLEEP_NEED_HOURS = float(get("LOOP_SLEEP_NEED_HOURS", "8") or 8)
 
 WHOOP_CLIENT_ID = get("WHOOP_CLIENT_ID")
 WHOOP_CLIENT_SECRET = get("WHOOP_CLIENT_SECRET")
@@ -651,7 +654,7 @@ def max_hr() -> int:
     return MAX_HR or round(208 - 0.7 * AGE)  # Tanaka estimate
 ```
 
-## `vitals/db.py`
+## `loop/db.py`
 
 ```python
 """SQLite storage. One file, safe to copy for backups (WAL mode)."""
@@ -883,13 +886,13 @@ def log_sync(device: str, source: str, ok: bool, detail: str, now: int) -> None:
                   (device, source, now, int(ok), detail[:500]))
 ```
 
-## `vitals/ble/__init__.py` (empty file)
+## `loop/ble/__init__.py` (empty file)
 
 ```python
 
 ```
 
-## `vitals/ble/protocol.py`
+## `loop/ble/protocol.py`
 
 ```python
 """WHOOP 5.0 / MG GATT layout and command numbers.
@@ -956,7 +959,7 @@ META_HISTORY_END = 2
 META_HISTORY_COMPLETE = 3
 ```
 
-## `vitals/ble/frames.py`
+## `loop/ble/frames.py`
 
 ```python
 """WHOOP 5.0 / MG ("puffin") frame envelope.
@@ -1077,7 +1080,7 @@ def parse_standard_hr(data: bytes) -> tuple[int, list[float]]:
     return bpm, rr
 ```
 
-## `vitals/ble/sinks.py`
+## `loop/ble/sinks.py`
 
 ```python
 """Where collected data goes: straight into the local database (on the Pi), or
@@ -1090,7 +1093,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-log = logging.getLogger("vitals.sink")
+log = logging.getLogger("loop.sink")
 
 
 class LocalSink:
@@ -1139,7 +1142,7 @@ class HttpSink:
             (self.spool / f"{time.time_ns()}.json").write_bytes(body)
 ```
 
-## `vitals/ble/whoop_mg.py`
+## `loop/ble/whoop_mg.py`
 
 ```python
 """Collector for a WHOOP 5.0 / MG strap, run on the Pi or a laptop.
@@ -1155,9 +1158,9 @@ What it does on every connection:
      never discards data we haven't kept.
 
 Usage:
-  python -m vitals.ble.whoop_mg scan                 # find your strap's address
-  python -m vitals.ble.whoop_mg run                  # on the Pi (writes locally)
-  python -m vitals.ble.whoop_mg run --upload https://vitals.<tailnet>.ts.net
+  python -m loop.ble.whoop_mg scan                 # find your strap's address
+  python -m loop.ble.whoop_mg run                  # on the Pi (writes locally)
+  python -m loop.ble.whoop_mg run --upload https://loop.<tailnet>.ts.net
 """
 from __future__ import annotations
 
@@ -1176,7 +1179,7 @@ from .frames import FrameAssembler, build_frame, parse_standard_hr
 from .history import decode as decode_history, load_layout
 from .sinks import HttpSink, LocalSink
 
-log = logging.getLogger("vitals.whoop")
+log = logging.getLogger("loop.whoop")
 DEVICE = "whoop"
 FLUSH_SECONDS = 15
 HISTORY_EVERY_SECONDS = 30 * 60
@@ -1198,7 +1201,7 @@ class WhoopSession:
         self.last_history = 0.0
         self.history_records = 0
         self.history_samples: list[tuple] = []
-        self.layout = load_layout()  # set once `python -m vitals.ble.history probe --save` has run
+        self.layout = load_layout()  # set once `python -m loop.ble.history probe --save` has run
 
     # ---- outgoing -------------------------------------------------------
     async def send(self, command: int, data: bytes = b"") -> None:
@@ -1327,7 +1330,7 @@ def main() -> None:
         return
     if not args.address:
         raise SystemExit("Set WHOOP_ADDRESS in .env (run the scan command first)")
-    sink = (HttpSink(args.upload, config.INGEST_TOKEN, Path.home() / ".vitals-spool")
+    sink = (HttpSink(args.upload, config.INGEST_TOKEN, Path.home() / ".loop-spool")
             if args.upload else LocalSink())
     asyncio.run(WhoopSession(args.address, sink, not args.no_history).run_forever())
 
@@ -1336,7 +1339,7 @@ if __name__ == "__main__":
     main()
 ```
 
-## `vitals/ble/history.py`
+## `loop/ble/history.py`
 
 ```python
 """Working out the WHOOP MG stored-history record layout from your own data.
@@ -1351,9 +1354,9 @@ truth. History records are stored raw. This tool lines the two up:
   4. print the best candidates; --save writes data/history_layout.json, after which
      the collector decodes history frames as they arrive and `redecode` fills old data
 
-    python -m vitals.ble.history probe
-    python -m vitals.ble.history probe --save
-    python -m vitals.ble.history redecode
+    python -m loop.ble.history probe
+    python -m loop.ble.history probe --save
+    python -m loop.ble.history redecode
 
 Assumes one sample per record. If the report shows several timestamps or repeated
 heart-rate fields per record, the layout needs a closer look before saving.
@@ -1489,7 +1492,7 @@ def redecode(device: str = DEVICE, incremental: bool = False) -> int:
     if not layout:
         if incremental:
             return 0
-        raise SystemExit("No saved layout yet. Run: python -m vitals.ble.history probe --save")
+        raise SystemExit("No saved layout yet. Run: python -m loop.ble.history probe --save")
     after = db.kv_get(f"history_cursor:{device}", 0) if incremental else 0
     top = db.query("SELECT COALESCE(MAX(id),0) AS m FROM raw_frames WHERE device=?", (device,))[0]["m"]
     rows = [d for p in history_records(device, (layout["packet_type"],), after) if (d := decode(p, layout))]
@@ -1522,13 +1525,13 @@ if __name__ == "__main__":
     main()
 ```
 
-## `vitals/sources/__init__.py` (empty file)
+## `loop/sources/__init__.py` (empty file)
 
 ```python
 
 ```
 
-## `vitals/sources/oauth.py`
+## `loop/sources/oauth.py`
 
 ```python
 """Small OAuth 2.0 authorization-code helper shared by the WHOOP and Oura sources.
@@ -1621,7 +1624,7 @@ class Provider:
         return {}
 ```
 
-## `vitals/sources/whoop_api.py`
+## `loop/sources/whoop_api.py`
 
 ```python
 """Official WHOOP API v2 (temporary baseline while the membership lasts).
@@ -1746,7 +1749,7 @@ def sync() -> str:
     return f"{len(sleeps)} sleeps, {len(workouts)} workouts"
 ```
 
-## `vitals/sources/oura_api.py`
+## `loop/sources/oura_api.py`
 
 ```python
 """Official Oura API v2 (baseline while the Oura membership is active)."""
@@ -1864,7 +1867,7 @@ def sync() -> str:
     return f"{len(sleeps)} sleep periods, {n_hr} heart-rate samples"
 ```
 
-## `vitals/analytics.py`
+## `loop/analytics.py`
 
 ```python
 """Our own scores, computed from raw beat-level data (no vendor algorithms).
@@ -2449,7 +2452,7 @@ def readiness(device: str) -> dict:
             "ready": not blocked and nights >= 30 and len(passing) >= 3}
 ```
 
-## `vitals/insights.py`
+## `loop/insights.py`
 
 ```python
 """Journal patterns, alerts and the morning brief."""
@@ -2662,12 +2665,12 @@ def push_new() -> None:
     db.kv_set("pushed", sorted(sent)[-200:])
 ```
 
-## `vitals/server.py`
+## `loop/server.py`
 
 ```python
 """Dashboard server: serves the web app and its API. Runs on the Pi.
 
-    uvicorn vitals.server:app --host 127.0.0.1 --port 8800
+    uvicorn loop.server:app --host 127.0.0.1 --port 8800
 """
 from __future__ import annotations
 
@@ -2687,14 +2690,14 @@ from . import analytics, config, db, insights
 from .ble import history
 from .sources import oura_api, whoop_api
 
-log = logging.getLogger("vitals.server")
+log = logging.getLogger("loop.server")
 WEB = config.ROOT / "web"
 DEVICES = ("whoop", "oura")
 PROVIDERS = {"whoop": whoop_api, "oura": oura_api}
 SYNC_EVERY = 30 * 60
 RECOMPUTE_EVERY = 10 * 60
 
-app = FastAPI(title="Vitals", docs_url=None, redoc_url=None)
+app = FastAPI(title="Loop", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 
@@ -2986,10 +2989,10 @@ def disconnect(name: str) -> dict:
     return {"ok": True}
 ```
 
-## `vitals/mcp_server.py`
+## `loop/mcp_server.py`
 
 ```python
-"""Claude connector (MCP over stdio) for your Vitals data.
+"""Claude connector (MCP over stdio) for your Loop data.
 
 Runs on the computer where you use the Claude desktop app and reads from the Pi
 over Tailscale, so your data never leaves your own network except as the answers
@@ -2998,11 +3001,11 @@ Claude shows you. No extra packages needed.
 Claude desktop app → Settings → Developer → Edit Config, add:
 
     "mcpServers": {
-      "vitals": {
+      "loop": {
         "command": "python3",
-        "args": ["-m", "vitals.mcp_server"],
-        "cwd": "/path/to/vitals",
-        "env": {"VITALS_URL": "https://vitals.<your-tailnet>.ts.net"}
+        "args": ["-m", "loop.mcp_server"],
+        "cwd": "/path/to/loop",
+        "env": {"LOOP_URL": "https://loop.<your-tailnet>.ts.net"}
       }
     }
 """
@@ -3014,7 +3017,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-URL = os.environ.get("VITALS_URL", "http://localhost:8800").rstrip("/")
+URL = os.environ.get("LOOP_URL", "http://localhost:8800").rstrip("/")
 FIELDS = ["recovery", "strain", "hrv", "rhr", "sleep_min", "deep_min", "rem_min", "sleep_perf",
           "resp_rate", "spo2", "skin_temp", "bedtime", "waketime", "calibrating"]
 
@@ -3037,7 +3040,7 @@ def daily_metrics(days: int = 14, device: str = "", source: str = "") -> dict:
             if (not device or r["device"] == device) and (not source or r["source"] == source)]
     return {"units": {"hrv": "ms (RMSSD)", "rhr": "bpm", "sleep_min": "minutes", "recovery": "0-100",
                       "strain": "0-21", "bedtime/waketime": "unix seconds"},
-            "notes": "source 'ours' = computed by Vitals from raw strap data; 'official' = vendor app scores.",
+            "notes": "source 'ours' = computed by Loop from raw strap data; 'official' = vendor app scores.",
             "rows": rows}
 
 
@@ -3080,10 +3083,10 @@ def journal(days: int = 30) -> dict:
 TOOLS = {
     "morning_brief": (morning_brief, "Today's (or a given day's) recovery, HRV, resting HR, sleep and strain summary in plain language.",
                       {"day": {"type": "string", "description": "YYYY-MM-DD; empty for today"}}),
-    "daily_metrics": (daily_metrics, "Day-by-day metrics from WHOOP and Oura, both official and Vitals' own ('ours').",
+    "daily_metrics": (daily_metrics, "Day-by-day metrics from WHOOP and Oura, both official and Loop' own ('ours').",
                       {"days": {"type": "integer", "default": 14}, "device": {"type": "string", "enum": ["", "whoop", "oura"]},
                        "source": {"type": "string", "enum": ["", "ours", "official"]}}),
-    "agreement": (agreement, "How closely Vitals' own numbers match the official ones, and WHOOP vs Oura.",
+    "agreement": (agreement, "How closely Loop' own numbers match the official ones, and WHOOP vs Oura.",
                   {"days": {"type": "integer", "default": 60}}),
     "cancel_readiness": (cancel_readiness, "Whether each membership could be cancelled yet, based on 30 nights of agreement.", {}),
     "workouts": (workouts, "Workouts per day: detected from heart rate, logged by the user, or from the WHOOP app.",
@@ -3100,9 +3103,9 @@ def handle(msg: dict) -> dict | None:
         return None
     if method == "initialize":
         result = {"protocolVersion": params.get("protocolVersion", "2025-06-18"),
-                  "capabilities": {"tools": {}}, "serverInfo": {"name": "vitals", "version": "1.0"},
-                  "instructions": "Personal WHOOP and Oura data from the user's own Vitals dashboard. "
-                                  "'ours' scores are approximations computed by Vitals; say so when it matters."}
+                  "capabilities": {"tools": {}}, "serverInfo": {"name": "loop", "version": "1.0"},
+                  "instructions": "Personal WHOOP and Oura data from the user's own Loop dashboard. "
+                                  "'ours' scores are approximations computed by Loop; say so when it matters."}
     elif method == "ping":
         result = {}
     elif method == "tools/list":
@@ -3116,7 +3119,7 @@ def handle(msg: dict) -> dict | None:
             out = TOOLS[name][0](**args)
             result = {"content": [{"type": "text", "text": json.dumps(out, default=str)}]}
         except Exception as e:  # noqa: BLE001
-            result = {"content": [{"type": "text", "text": f"Couldn't reach Vitals at {URL}: {e}. "
+            result = {"content": [{"type": "text", "text": f"Couldn't reach Loop at {URL}: {e}. "
                                    "Check that the Pi is on and Tailscale is connected."}], "isError": True}
     else:
         return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"method {method} not supported"}}
@@ -3141,19 +3144,19 @@ if __name__ == "__main__":
     main()
 ```
 
-## `vitals/tools/__init__.py` (empty file)
+## `loop/tools/__init__.py` (empty file)
 
 ```python
 
 ```
 
-## `vitals/tools/seed_demo.py`
+## `loop/tools/seed_demo.py`
 
 ```python
 """Fill a throwaway database with ~60 days of realistic synthetic data, so the
 dashboard and scoring can be tried before the Pi and strap are set up.
 
-    VITALS_DB=data/demo.sqlite python -m vitals.tools.seed_demo
+    LOOP_DB=data/demo.sqlite python -m loop.tools.seed_demo
 """
 from __future__ import annotations
 
@@ -3331,13 +3334,13 @@ if __name__ == "__main__":
     main()
 ```
 
-## `vitals/tools/build_demo.py`
+## `loop/tools/build_demo.py`
 
 ```python
 """Bundle the dashboard with sample data into one self-contained HTML file
 (for previewing without a Pi).
 
-    VITALS_DB=data/demo.sqlite python -m vitals.tools.build_demo out.html
+    LOOP_DB=data/demo.sqlite python -m loop.tools.build_demo out.html
 """
 from __future__ import annotations
 
@@ -3366,13 +3369,13 @@ def main(out: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "vitals-preview.html")
+    main(sys.argv[1] if len(sys.argv) > 1 else "loop-preview.html")
 ```
 
 ## `web/app.html`
 
 ```html
-<title>Vitals Lab</title>
+<title>Loop</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -3589,7 +3592,7 @@ select { height: 34px; border-radius: 10px; border: 1px solid var(--line); backg
 
 <header class="top">
   <div class="top-in">
-    <div class="brand"><h1>Vitals Lab</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
+    <div class="brand"><h1>Loop</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
   </div>
 </header>
 
@@ -3621,8 +3624,8 @@ const SERIES = [
   { key: "oura:official", device: "oura", source: "official", name: "Oura · Official", color: "var(--oura)", dash: true },
 ];
 const store = {
-  get(k, d) { try { const v = localStorage.getItem("vitals:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("vitals:" + k, JSON.stringify(v)); } catch {} },
+  get(k, d) { try { const v = localStorage.getItem("loop:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("loop:" + k, JSON.stringify(v)); } catch {} },
 };
 const S = {
   filters: store.get("filters", { whoop: true, oura: true, ours: true, official: true }),
@@ -4309,7 +4312,7 @@ if (VIEWS[h]) S.view = h;
 window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS[v] && v !== S.view) { S.view = v; render(); } });
 if (S.demo) document.getElementById("demoBadge").hidden = false;
 let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 200); });
-load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Vitals server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
+load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Loop server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
 })();
 </script>
 ```
@@ -4318,8 +4321,8 @@ load().catch(err => { document.getElementById("view-today").innerHTML = `<div cl
 
 ```json
 {
-  "name": "Vitals Lab",
-  "short_name": "Vitals",
+  "name": "Loop",
+  "short_name": "Loop",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0C111A",
@@ -4340,8 +4343,8 @@ load().catch(err => { document.getElementById("view-today").innerHTML = `<div cl
 import os
 import tempfile
 
-# One throwaway database for the whole test run, set before any vitals import.
-os.environ["VITALS_DB"] = os.path.join(tempfile.mkdtemp(), "test.sqlite")
+# One throwaway database for the whole test run, set before any loop import.
+os.environ["LOOP_DB"] = os.path.join(tempfile.mkdtemp(), "test.sqlite")
 os.environ.setdefault("WHOOP_IMPORT_FROM", "2022-04-01")
 os.environ.setdefault("OURA_IMPORT_FROM", "2026-10-01")
 ```
@@ -4349,8 +4352,8 @@ os.environ.setdefault("OURA_IMPORT_FROM", "2026-10-01")
 ## `tests/test_frames.py`
 
 ```python
-from vitals.ble import protocol as P
-from vitals.ble.frames import FrameAssembler, build_frame, crc16_modbus, crc32, parse_standard_hr
+from loop.ble import protocol as P
+from loop.ble.frames import FrameAssembler, build_frame, crc16_modbus, crc32, parse_standard_hr
 
 
 def test_check_vectors():
@@ -4384,7 +4387,7 @@ def test_standard_hr():
 import math
 import random
 
-from vitals.analytics import resp_rate, rmssd
+from loop.analytics import resp_rate, rmssd
 
 
 def synth_rr(breaths_per_min: float, seconds: int = 300, hr: float = 58, seed: int = 1) -> list[float]:
@@ -4424,9 +4427,9 @@ import struct
 import tempfile
 
 
-from vitals import db  # noqa: E402
-from vitals.ble import history  # noqa: E402
-from vitals.ble.frames import build_frame  # noqa: E402
+from loop import db  # noqa: E402
+from loop.ble import history  # noqa: E402
+from loop.ble.frames import build_frame  # noqa: E402
 
 
 def make_record(ts: int, bpm: int, rr: int, r: random.Random) -> bytes:
@@ -4466,8 +4469,8 @@ def test_probe_finds_layout_and_redecodes():
 
 ```python
 import os, tempfile
-from vitals import db
-from vitals.sources import whoop_api, oura_api
+from loop import db
+from loop.sources import whoop_api, oura_api
 
 SLEEP = {"id": "s1", "nap": False, "score_state": "SCORED", "start": "2022-04-24T02:25:44.774Z", "end": "2022-04-24T10:25:44.774Z",
          "timezone_offset": "-05:00", "score": {"stage_summary": {"total_in_bed_time_milli": 30272735, "total_awake_time_milli": 1403507,
@@ -4518,7 +4521,7 @@ import textwrap
 CODE = textwrap.dedent("""
     import time
     from datetime import datetime, timedelta
-    from vitals import analytics, db, insights
+    from loop import analytics, db, insights
     today = datetime.now(analytics.TZ).date()
     now = int(time.time())
     for i in range(40, -1, -1):
@@ -4546,7 +4549,7 @@ CODE = textwrap.dedent("""
 
 
 def test_patterns_alerts_summary():
-    env = dict(os.environ, VITALS_DB=tempfile.mktemp(suffix=".sqlite"))
+    env = dict(os.environ, LOOP_DB=tempfile.mktemp(suffix=".sqlite"))
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     r = subprocess.run([sys.executable, "-c", CODE], env=env, cwd=root, capture_output=True, text=True)
     assert r.returncode == 0 and "ok" in r.stdout, r.stderr
@@ -4565,7 +4568,7 @@ import textwrap
 CODE = textwrap.dedent("""
     import math
     from datetime import datetime, timedelta
-    from vitals import analytics, db
+    from loop import analytics, db
     day = datetime.now(analytics.TZ).date() - timedelta(days=2)
     mid = int(datetime(day.year, day.month, day.day, tzinfo=analytics.TZ).timestamp())
     rows = []
@@ -4611,7 +4614,7 @@ CODE = textwrap.dedent("""
 
 
 def test_detect_log_and_strain():
-    env = dict(os.environ, VITALS_DB=tempfile.mktemp(suffix=".sqlite"))
+    env = dict(os.environ, LOOP_DB=tempfile.mktemp(suffix=".sqlite"))
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     r = subprocess.run([sys.executable, "-c", CODE], env=env, cwd=root, capture_output=True, text=True)
     assert r.returncode == 0 and "ok" in r.stdout, r.stderr
@@ -4620,7 +4623,7 @@ def test_detect_log_and_strain():
 ## `README.md`
 
 ````markdown
-# Vitals Lab
+# Loop
 
 A self-hosted dashboard for your WHOOP MG and Oura Ring 4. It runs on a Raspberry Pi
 Zero 2 W, you open it from your iPhone or laptop over Tailscale, and nothing depends
@@ -4642,7 +4645,7 @@ on a subscription once the trial period is over.
 | Our HRV, resting HR, sleep timing, strain, recovery | Computed from the above |
 | Our breathing rate | Computed from the heartbeat rhythm (breathing speeds the heart up and down) |
 | Sleep stages (ours) | Rough estimate from heart rate, labelled "est." |
-| WHOOP MG stored-history offload | Requested and stored raw; `vitals.ble.history probe` works out the layout from your own data |
+| WHOOP MG stored-history offload | Requested and stored raw; `loop.ble.history probe` works out the layout from your own data |
 | WHOOP MG SpO₂, skin temp | Not decoded yet ("not yet" in the app) |
 | WHOOP official API | Works once authorized (temporary baseline) |
 | Oura official API | Works with your membership |
@@ -4666,8 +4669,8 @@ rely on the Pi, and close the WHOOP app on your phone while the Pi is collecting
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-VITALS_DB=data/demo.sqlite python -m vitals.tools.seed_demo
-VITALS_DB=data/demo.sqlite uvicorn vitals.server:app --port 8800
+LOOP_DB=data/demo.sqlite python -m loop.tools.seed_demo
+LOOP_DB=data/demo.sqlite uvicorn loop.server:app --port 8800
 # open http://localhost:8800
 ```
 
@@ -4679,8 +4682,8 @@ auto-tuning start immediately. You move everything to the Pi later.
 ```bash
 python3 -m venv .venv && . .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env      # set VITALS_BASE_URL=http://localhost:8800 and the API keys
-uvicorn vitals.server:app --port 8800
+cp .env.example .env      # set LOOP_BASE_URL=http://localhost:8800 and the API keys
+uvicorn loop.server:app --port 8800
 ```
 
 In the WHOOP and Oura developer dashboards, register `http://localhost:8800/auth/whoop/callback`
@@ -4688,20 +4691,20 @@ and `http://localhost:8800/auth/oura/callback` now, and the Tailscale versions l
 can be listed). Open http://localhost:8800 → Devices → Connect. The server only syncs while
 it's running, but each sync catches up the last few days, so running it daily is enough.
 
-**Moving to the Pi:** stop the server, copy `data/vitals.sqlite` and `.env` to the Pi,
-change `VITALS_BASE_URL` to the Tailscale address, and start the Pi services. Your
+**Moving to the Pi:** stop the server, copy `data/loop.sqlite` and `.env` to the Pi,
+change `LOOP_BASE_URL` to the Tailscale address, and start the Pi services. Your
 connections and history carry over.
 
 ## Set up the Pi
 
 1. **Flash** Raspberry Pi OS Lite (64-bit) with Raspberry Pi Imager. In its settings,
-   set the hostname to `vitals`, enable SSH, and add your Wi-Fi.
+   set the hostname to `loop`, enable SSH, and add your Wi-Fi.
 2. **Install:**
    ```bash
    sudo apt update && sudo apt install -y python3-venv bluez git
    sudo usermod -aG bluetooth pi
-   # copy this folder to /home/pi/vitals, then:
-   cd ~/vitals && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+   # copy this folder to /home/pi/loop, then:
+   cd ~/loop && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
    cp .env.example .env
    ```
 3. **Tailscale** (free personal plan):
@@ -4709,21 +4712,21 @@ connections and history carry over.
    curl -fsSL https://tailscale.com/install.sh | sh
    sudo tailscale up
    sudo tailscale serve --bg 8800
-   tailscale serve status     # shows https://vitals.<your-tailnet>.ts.net
+   tailscale serve status     # shows https://loop.<your-tailnet>.ts.net
    ```
-   Put that address in `.env` as `VITALS_BASE_URL`. Install Tailscale on your iPhone
+   Put that address in `.env` as `LOOP_BASE_URL`. Install Tailscale on your iPhone
    and laptop and sign in with the same account. Nothing is exposed to the internet.
 4. **Pair the strap:** close the WHOOP app on your phone, then
    ```bash
-   .venv/bin/python -m vitals.ble.whoop_mg scan
+   .venv/bin/python -m loop.ble.whoop_mg scan
    ```
    Put the address in `.env` as `WHOOP_ADDRESS`. If nothing shows up, put the strap in
    pairing mode and scan again.
 5. **Start the services:**
    ```bash
    sudo cp deploy/*.service /etc/systemd/system/
-   sudo systemctl enable --now vitals-server vitals-collector
-   journalctl -u vitals-collector -f     # watch it connect
+   sudo systemctl enable --now loop-server loop-collector
+   journalctl -u loop-collector -f     # watch it connect
    ```
 6. **Backups:** `chmod +x deploy/backup.sh`, add the cron line from the top of the
    script, and optionally run `rclone config` to add an offsite remote named `offsite`.
@@ -4734,14 +4737,14 @@ connections and history carry over.
 
 **WHOOP** (your wife's account, from your first day of wearing it):
 1. At developer-dashboard.whoop.com, create an app. Redirect URL:
-   `https://vitals.<tailnet>.ts.net/auth/whoop/callback`. Copy the client ID and secret into `.env`.
+   `https://loop.<tailnet>.ts.net/auth/whoop/callback`. Copy the client ID and secret into `.env`.
 2. Set `WHOOP_IMPORT_FROM` to the first day you wore the strap.
 3. Restart the server, open Devices → Connect WHOOP MG, and have your wife sign in and approve.
 4. Ask her to update the account's height, weight and age to yours.
 
 **Oura:**
 1. At cloud.ouraring.com/oauth/applications, create an app with redirect
-   `https://vitals.<tailnet>.ts.net/auth/oura/callback`. Copy the ID and secret into `.env`.
+   `https://loop.<tailnet>.ts.net/auth/oura/callback`. Copy the ID and secret into `.env`.
 2. Restart the server, open Devices → Connect Oura Ring 4, and approve.
 
 ## Travelling more than 14 days
@@ -4751,8 +4754,8 @@ the Pi can't be reached, saves batches locally and sends them later.
 
 ```bash
 pip install -r requirements.txt
-# put VITALS_INGEST_TOKEN (same value as on the Pi) and WHOOP_ADDRESS in .env
-python -m vitals.ble.whoop_mg run --upload https://vitals.<tailnet>.ts.net
+# put LOOP_INGEST_TOKEN (same value as on the Pi) and WHOOP_ADDRESS in .env
+python -m loop.ble.whoop_mg run --upload https://loop.<tailnet>.ts.net
 ```
 
 Leave it running with the strap nearby for an hour or so to drain the backlog. The
@@ -4764,9 +4767,9 @@ Once the Pi has collected live heart rate *and* the strap has offloaded history
 for a few days (both happen automatically), run:
 
 ```bash
-.venv/bin/python -m vitals.ble.history probe          # shows what it found
-.venv/bin/python -m vitals.ble.history probe --save   # only saves a strong match
-.venv/bin/python -m vitals.ble.history redecode       # fills old data from stored frames
+.venv/bin/python -m loop.ble.history probe          # shows what it found
+.venv/bin/python -m loop.ble.history probe --save   # only saves a strong match
+.venv/bin/python -m loop.ble.history redecode       # fills old data from stored frames
 ```
 
 It lines up the stored records with the live heart rate to find where the time and
@@ -4797,7 +4800,7 @@ set against ours, with the "Ready to cancel WHOOP?" check.
 
 - **Detected:** at least 10 minutes at or above 45% of heart-rate reserve; easier minutes
   or gaps under 4 minutes don't split a workout. Only time the strap was heard can be
-  detected. Constants are at the top of the workouts section in `vitals/analytics.py`.
+  detected. Constants are at the top of the workouts section in `loop/analytics.py`.
 - **Logged:** add one on the Today screen (type, start, minutes). If the strap was heard
   for at least half of it, it gets real heart-rate numbers and replaces the detected
   stretch. Minutes that weren't heard count toward Strain at a typical effort for the
@@ -4823,11 +4826,11 @@ under Settings → Developer → Edit Config:
 
 ```json
 "mcpServers": {
-  "vitals": {
+  "loop": {
     "command": "python3",
-    "args": ["-m", "vitals.mcp_server"],
-    "cwd": "/path/to/vitals",
-    "env": { "VITALS_URL": "https://vitals.<your-tailnet>.ts.net" }
+    "args": ["-m", "loop.mcp_server"],
+    "cwd": "/path/to/loop",
+    "env": { "LOOP_URL": "https://loop.<your-tailnet>.ts.net" }
   }
 }
 ```
@@ -4850,13 +4853,13 @@ while it recalibrates from the previous wearer's baseline.
 ## Layout
 
 ```
-vitals/ble/        Bluetooth: framing + CRCs, protocol constants, WHOOP MG collector, upload spooler
-vitals/sources/    WHOOP and Oura official API sync (OAuth)
-vitals/ble/history.py  stored-history layout finder + decoder
-vitals/analytics.py  our sleep, HRV, RHR, breathing, recovery, strain, auto-tuning, agreement
-vitals/insights.py   journal patterns, alerts, morning brief, ntfy push
-vitals/mcp_server.py Claude desktop connector
-vitals/server.py   FastAPI app: dashboard, data API, ingest, OAuth
+loop/ble/        Bluetooth: framing + CRCs, protocol constants, WHOOP MG collector, upload spooler
+loop/sources/    WHOOP and Oura official API sync (OAuth)
+loop/ble/history.py  stored-history layout finder + decoder
+loop/analytics.py  our sleep, HRV, RHR, breathing, recovery, strain, auto-tuning, agreement
+loop/insights.py   journal patterns, alerts, morning brief, ntfy push
+loop/mcp_server.py Claude desktop connector
+loop/server.py   FastAPI app: dashboard, data API, ingest, OAuth
 web/app.html       the dashboard (single file, no build step)
 deploy/            systemd units, backup script
 tests/             framing, scoring, API mapping, workouts

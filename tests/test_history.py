@@ -4,9 +4,9 @@ import struct
 import tempfile
 
 
-from vitals import db  # noqa: E402
-from vitals.ble import history  # noqa: E402
-from vitals.ble.frames import build_frame  # noqa: E402
+from loop import db  # noqa: E402
+from loop.ble import history  # noqa: E402
+from loop.ble.frames import build_frame  # noqa: E402
 
 
 def make_record(ts: int, bpm: int, rr: int, r: random.Random) -> bytes:

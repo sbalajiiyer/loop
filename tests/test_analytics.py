@@ -1,7 +1,7 @@
 import math
 import random
 
-from vitals.analytics import resp_rate, rmssd
+from loop.analytics import resp_rate, rmssd
 
 
 def synth_rr(breaths_per_min: float, seconds: int = 300, hr: float = 58, seed: int = 1) -> list[float]:

@@ -10,9 +10,9 @@ truth. History records are stored raw. This tool lines the two up:
   4. print the best candidates; --save writes data/history_layout.json, after which
      the collector decodes history frames as they arrive and `redecode` fills old data
 
-    python -m vitals.ble.history probe
-    python -m vitals.ble.history probe --save
-    python -m vitals.ble.history redecode
+    python -m loop.ble.history probe
+    python -m loop.ble.history probe --save
+    python -m loop.ble.history redecode
 
 Assumes one sample per record. If the report shows several timestamps or repeated
 heart-rate fields per record, the layout needs a closer look before saving.
@@ -148,7 +148,7 @@ def redecode(device: str = DEVICE, incremental: bool = False) -> int:
     if not layout:
         if incremental:
             return 0
-        raise SystemExit("No saved layout yet. Run: python -m vitals.ble.history probe --save")
+        raise SystemExit("No saved layout yet. Run: python -m loop.ble.history probe --save")
     after = db.kv_get(f"history_cursor:{device}", 0) if incremental else 0
     top = db.query("SELECT COALESCE(MAX(id),0) AS m FROM raw_frames WHERE device=?", (device,))[0]["m"]
     rows = [d for p in history_records(device, (layout["packet_type"],), after) if (d := decode(p, layout))]

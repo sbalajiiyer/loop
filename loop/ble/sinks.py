@@ -8,7 +8,7 @@ import time
 import urllib.request
 from pathlib import Path
 
-log = logging.getLogger("vitals.sink")
+log = logging.getLogger("loop.sink")
 
 
 class LocalSink:

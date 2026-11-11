@@ -1,4 +1,4 @@
-"""Claude connector (MCP over stdio) for your Vitals data.
+"""Claude connector (MCP over stdio) for your Loop data.
 
 Runs on the computer where you use the Claude desktop app and reads from the Pi
 over Tailscale, so your data never leaves your own network except as the answers
@@ -7,11 +7,11 @@ Claude shows you. No extra packages needed.
 Claude desktop app → Settings → Developer → Edit Config, add:
 
     "mcpServers": {
-      "vitals": {
+      "loop": {
         "command": "python3",
-        "args": ["-m", "vitals.mcp_server"],
-        "cwd": "/path/to/vitals",
-        "env": {"VITALS_URL": "https://vitals.<your-tailnet>.ts.net"}
+        "args": ["-m", "loop.mcp_server"],
+        "cwd": "/path/to/loop",
+        "env": {"LOOP_URL": "https://loop.<your-tailnet>.ts.net"}
       }
     }
 """
@@ -23,7 +23,7 @@ import sys
 import urllib.parse
 import urllib.request
 
-URL = os.environ.get("VITALS_URL", "http://localhost:8800").rstrip("/")
+URL = os.environ.get("LOOP_URL", "http://localhost:8800").rstrip("/")
 FIELDS = ["recovery", "strain", "hrv", "rhr", "sleep_min", "deep_min", "rem_min", "sleep_perf",
           "resp_rate", "spo2", "skin_temp", "bedtime", "waketime", "calibrating"]
 
@@ -46,7 +46,7 @@ def daily_metrics(days: int = 14, device: str = "", source: str = "") -> dict:
             if (not device or r["device"] == device) and (not source or r["source"] == source)]
     return {"units": {"hrv": "ms (RMSSD)", "rhr": "bpm", "sleep_min": "minutes", "recovery": "0-100",
                       "strain": "0-21", "bedtime/waketime": "unix seconds"},
-            "notes": "source 'ours' = computed by Vitals from raw strap data; 'official' = vendor app scores.",
+            "notes": "source 'ours' = computed by Loop from raw strap data; 'official' = vendor app scores.",
             "rows": rows}
 
 
@@ -89,10 +89,10 @@ def journal(days: int = 30) -> dict:
 TOOLS = {
     "morning_brief": (morning_brief, "Today's (or a given day's) recovery, HRV, resting HR, sleep and strain summary in plain language.",
                       {"day": {"type": "string", "description": "YYYY-MM-DD; empty for today"}}),
-    "daily_metrics": (daily_metrics, "Day-by-day metrics from WHOOP and Oura, both official and Vitals' own ('ours').",
+    "daily_metrics": (daily_metrics, "Day-by-day metrics from WHOOP and Oura, both official and Loop' own ('ours').",
                       {"days": {"type": "integer", "default": 14}, "device": {"type": "string", "enum": ["", "whoop", "oura"]},
                        "source": {"type": "string", "enum": ["", "ours", "official"]}}),
-    "agreement": (agreement, "How closely Vitals' own numbers match the official ones, and WHOOP vs Oura.",
+    "agreement": (agreement, "How closely Loop' own numbers match the official ones, and WHOOP vs Oura.",
                   {"days": {"type": "integer", "default": 60}}),
     "cancel_readiness": (cancel_readiness, "Whether each membership could be cancelled yet, based on 30 nights of agreement.", {}),
     "workouts": (workouts, "Workouts per day: detected from heart rate, logged by the user, or from the WHOOP app.",
@@ -109,9 +109,9 @@ def handle(msg: dict) -> dict | None:
         return None
     if method == "initialize":
         result = {"protocolVersion": params.get("protocolVersion", "2025-06-18"),
-                  "capabilities": {"tools": {}}, "serverInfo": {"name": "vitals", "version": "1.0"},
-                  "instructions": "Personal WHOOP and Oura data from the user's own Vitals dashboard. "
-                                  "'ours' scores are approximations computed by Vitals; say so when it matters."}
+                  "capabilities": {"tools": {}}, "serverInfo": {"name": "loop", "version": "1.0"},
+                  "instructions": "Personal WHOOP and Oura data from the user's own Loop dashboard. "
+                                  "'ours' scores are approximations computed by Loop; say so when it matters."}
     elif method == "ping":
         result = {}
     elif method == "tools/list":
@@ -125,7 +125,7 @@ def handle(msg: dict) -> dict | None:
             out = TOOLS[name][0](**args)
             result = {"content": [{"type": "text", "text": json.dumps(out, default=str)}]}
         except Exception as e:  # noqa: BLE001
-            result = {"content": [{"type": "text", "text": f"Couldn't reach Vitals at {URL}: {e}. "
+            result = {"content": [{"type": "text", "text": f"Couldn't reach Loop at {URL}: {e}. "
                                    "Check that the Pi is on and Tailscale is connected."}], "isError": True}
     else:
         return {"jsonrpc": "2.0", "id": mid, "error": {"code": -32601, "message": f"method {method} not supported"}}

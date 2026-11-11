@@ -1,6 +1,6 @@
 import os, tempfile
-from vitals import db
-from vitals.sources import whoop_api, oura_api
+from loop import db
+from loop.sources import whoop_api, oura_api
 
 SLEEP = {"id": "s1", "nap": False, "score_state": "SCORED", "start": "2022-04-24T02:25:44.774Z", "end": "2022-04-24T10:25:44.774Z",
          "timezone_offset": "-05:00", "score": {"stage_summary": {"total_in_bed_time_milli": 30272735, "total_awake_time_milli": 1403507,

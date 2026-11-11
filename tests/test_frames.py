@@ -1,5 +1,5 @@
-from vitals.ble import protocol as P
-from vitals.ble.frames import FrameAssembler, build_frame, crc16_modbus, crc32, parse_standard_hr
+from loop.ble import protocol as P
+from loop.ble.frames import FrameAssembler, build_frame, crc16_modbus, crc32, parse_standard_hr
 
 
 def test_check_vectors():

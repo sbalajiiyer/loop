@@ -1,7 +1,7 @@
 """Fill a throwaway database with ~60 days of realistic synthetic data, so the
 dashboard and scoring can be tried before the Pi and strap are set up.
 
-    VITALS_DB=data/demo.sqlite python -m vitals.tools.seed_demo
+    LOOP_DB=data/demo.sqlite python -m loop.tools.seed_demo
 """
 from __future__ import annotations
 

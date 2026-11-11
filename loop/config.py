@@ -26,17 +26,17 @@ def get(key: str, default: str = "") -> str:
     return os.environ.get(key, default)
 
 
-DB_PATH = Path(get("VITALS_DB", str(ROOT / "data" / "vitals.sqlite")))
+DB_PATH = Path(get("LOOP_DB", str(ROOT / "data" / "loop.sqlite")))
 # Public base URL of the dashboard (your Tailscale HTTPS name), used for OAuth redirects.
-BASE_URL = get("VITALS_BASE_URL", "http://localhost:8800").rstrip("/")
+BASE_URL = get("LOOP_BASE_URL", "http://localhost:8800").rstrip("/")
 # Shared secret the laptop collector uses when uploading to the Pi.
-INGEST_TOKEN = get("VITALS_INGEST_TOKEN", "")
-TIMEZONE = get("VITALS_TZ", "America/Detroit")
+INGEST_TOKEN = get("LOOP_INGEST_TOKEN", "")
+TIMEZONE = get("LOOP_TZ", "America/Detroit")
 
 # Personal profile used by our own scores.
-MAX_HR = int(get("VITALS_MAX_HR", "0") or 0)        # 0 = estimate from age
-AGE = int(get("VITALS_AGE", "45") or 45)
-SLEEP_NEED_HOURS = float(get("VITALS_SLEEP_NEED_HOURS", "8") or 8)
+MAX_HR = int(get("LOOP_MAX_HR", "0") or 0)        # 0 = estimate from age
+AGE = int(get("LOOP_AGE", "45") or 45)
+SLEEP_NEED_HOURS = float(get("LOOP_SLEEP_NEED_HOURS", "8") or 8)
 
 WHOOP_CLIENT_ID = get("WHOOP_CLIENT_ID")
 WHOOP_CLIENT_SECRET = get("WHOOP_CLIENT_SECRET")

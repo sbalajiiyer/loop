@@ -11,9 +11,9 @@ What it does on every connection:
      never discards data we haven't kept.
 
 Usage:
-  python -m vitals.ble.whoop_mg scan                 # find your strap's address
-  python -m vitals.ble.whoop_mg run                  # on the Pi (writes locally)
-  python -m vitals.ble.whoop_mg run --upload https://vitals.<tailnet>.ts.net
+  python -m loop.ble.whoop_mg scan                 # find your strap's address
+  python -m loop.ble.whoop_mg run                  # on the Pi (writes locally)
+  python -m loop.ble.whoop_mg run --upload https://loop.<tailnet>.ts.net
 """
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ from .frames import FrameAssembler, build_frame, parse_standard_hr
 from .history import decode as decode_history, load_layout
 from .sinks import HttpSink, LocalSink
 
-log = logging.getLogger("vitals.whoop")
+log = logging.getLogger("loop.whoop")
 DEVICE = "whoop"
 FLUSH_SECONDS = 15
 HISTORY_EVERY_SECONDS = 30 * 60
@@ -54,7 +54,7 @@ class WhoopSession:
         self.last_history = 0.0
         self.history_records = 0
         self.history_samples: list[tuple] = []
-        self.layout = load_layout()  # set once `python -m vitals.ble.history probe --save` has run
+        self.layout = load_layout()  # set once `python -m loop.ble.history probe --save` has run
 
     # ---- outgoing -------------------------------------------------------
     async def send(self, command: int, data: bytes = b"") -> None:
@@ -183,7 +183,7 @@ def main() -> None:
         return
     if not args.address:
         raise SystemExit("Set WHOOP_ADDRESS in .env (run the scan command first)")
-    sink = (HttpSink(args.upload, config.INGEST_TOKEN, Path.home() / ".vitals-spool")
+    sink = (HttpSink(args.upload, config.INGEST_TOKEN, Path.home() / ".loop-spool")
             if args.upload else LocalSink())
     asyncio.run(WhoopSession(args.address, sink, not args.no_history).run_forever())
 

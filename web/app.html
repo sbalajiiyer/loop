@@ -1,4 +1,4 @@
-<title>Vitals Lab</title>
+<title>Loop</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -215,7 +215,7 @@ select { height: 34px; border-radius: 10px; border: 1px solid var(--line); backg
 
 <header class="top">
   <div class="top-in">
-    <div class="brand"><h1>Vitals Lab</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
+    <div class="brand"><h1>Loop</h1><span class="demo" id="demoBadge" hidden>Sample data</span></div>
   </div>
 </header>
 
@@ -247,8 +247,8 @@ const SERIES = [
   { key: "oura:official", device: "oura", source: "official", name: "Oura · Official", color: "var(--oura)", dash: true },
 ];
 const store = {
-  get(k, d) { try { const v = localStorage.getItem("vitals:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
-  set(k, v) { try { localStorage.setItem("vitals:" + k, JSON.stringify(v)); } catch {} },
+  get(k, d) { try { const v = localStorage.getItem("loop:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("loop:" + k, JSON.stringify(v)); } catch {} },
 };
 const S = {
   filters: store.get("filters", { whoop: true, oura: true, ours: true, official: true }),
@@ -935,6 +935,6 @@ if (VIEWS[h]) S.view = h;
 window.addEventListener("hashchange", () => { const v = location.hash.slice(1); if (VIEWS[v] && v !== S.view) { S.view = v; render(); } });
 if (S.demo) document.getElementById("demoBadge").hidden = false;
 let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(render, 200); });
-load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Vitals server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
+load().catch(err => { document.getElementById("view-today").innerHTML = `<div class="panel"><div class="empty">Couldn't reach the Loop server (${esc(err.message)}). Check that the Pi is on and Tailscale is connected.</div></div>`; });
 })();
 </script>

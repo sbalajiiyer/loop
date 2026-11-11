@@ -1,7 +1,7 @@
 """Bundle the dashboard with sample data into one self-contained HTML file
 (for previewing without a Pi).
 
-    VITALS_DB=data/demo.sqlite python -m vitals.tools.build_demo out.html
+    LOOP_DB=data/demo.sqlite python -m loop.tools.build_demo out.html
 """
 from __future__ import annotations
 
@@ -30,4 +30,4 @@ def main(out: str) -> None:
 
 
 if __name__ == "__main__":
-    main(sys.argv[1] if len(sys.argv) > 1 else "vitals-preview.html")
+    main(sys.argv[1] if len(sys.argv) > 1 else "loop-preview.html")

@@ -8,7 +8,7 @@ import textwrap
 CODE = textwrap.dedent("""
     import math
     from datetime import datetime, timedelta
-    from vitals import analytics, db
+    from loop import analytics, db
     day = datetime.now(analytics.TZ).date() - timedelta(days=2)
     mid = int(datetime(day.year, day.month, day.day, tzinfo=analytics.TZ).timestamp())
     rows = []
@@ -54,7 +54,7 @@ CODE = textwrap.dedent("""
 
 
 def test_detect_log_and_strain():
-    env = dict(os.environ, VITALS_DB=tempfile.mktemp(suffix=".sqlite"))
+    env = dict(os.environ, LOOP_DB=tempfile.mktemp(suffix=".sqlite"))
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     r = subprocess.run([sys.executable, "-c", CODE], env=env, cwd=root, capture_output=True, text=True)
     assert r.returncode == 0 and "ok" in r.stdout, r.stderr

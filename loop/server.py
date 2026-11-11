@@ -1,6 +1,6 @@
 """Dashboard server: serves the web app and its API. Runs on the Pi.
 
-    uvicorn vitals.server:app --host 127.0.0.1 --port 8800
+    uvicorn loop.server:app --host 127.0.0.1 --port 8800
 """
 from __future__ import annotations
 
@@ -20,14 +20,14 @@ from . import analytics, config, db, insights
 from .ble import history
 from .sources import oura_api, whoop_api
 
-log = logging.getLogger("vitals.server")
+log = logging.getLogger("loop.server")
 WEB = config.ROOT / "web"
 DEVICES = ("whoop", "oura")
 PROVIDERS = {"whoop": whoop_api, "oura": oura_api}
 SYNC_EVERY = 30 * 60
 RECOMPUTE_EVERY = 10 * 60
 
-app = FastAPI(title="Vitals", docs_url=None, redoc_url=None)
+app = FastAPI(title="Loop", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=WEB), name="static")
 
 

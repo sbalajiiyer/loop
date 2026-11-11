@@ -8,7 +8,7 @@ import textwrap
 CODE = textwrap.dedent("""
     import time
     from datetime import datetime, timedelta
-    from vitals import analytics, db, insights
+    from loop import analytics, db, insights
     today = datetime.now(analytics.TZ).date()
     now = int(time.time())
     for i in range(40, -1, -1):
@@ -36,7 +36,7 @@ CODE = textwrap.dedent("""
 
 
 def test_patterns_alerts_summary():
-    env = dict(os.environ, VITALS_DB=tempfile.mktemp(suffix=".sqlite"))
+    env = dict(os.environ, LOOP_DB=tempfile.mktemp(suffix=".sqlite"))
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     r = subprocess.run([sys.executable, "-c", CODE], env=env, cwd=root, capture_output=True, text=True)
     assert r.returncode == 0 and "ok" in r.stdout, r.stderr

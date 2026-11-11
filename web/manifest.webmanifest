@@ -1,6 +1,6 @@
 {
-  "name": "Vitals Lab",
-  "short_name": "Vitals",
+  "name": "Loop",
+  "short_name": "Loop",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0C111A",

@@ -1,0 +1,15 @@
+[Unit]
+Description=Loop dashboard server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=pi
+WorkingDirectory=/home/pi/loop
+ExecStart=/home/pi/loop/.venv/bin/uvicorn loop.server:app --host 127.0.0.1 --port 8800 --workers 1
+Restart=always
+RestartSec=5
+MemoryMax=200M
+
+[Install]
+WantedBy=multi-user.target
